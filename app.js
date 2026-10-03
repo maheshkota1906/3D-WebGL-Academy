@@ -301,7 +301,7 @@ function populateAssets(){
 // Asset panel is intentionally removed from the main UI; selection is done directly in walkthrough mode.
 // Automatically load the Academy GLB from GitHub Pages
 const DEFAULT_MODEL_URL =
-  'https://github.com/maheshkota1906/3D-WebGL-Academy/raw/refs/heads/main/assets/MyCommunication%20GLB.glb';
+  'https://raw.githubusercontent.com/maheshkota1906/3D-WebGL-Academy/refs/heads/main/assets/MyCommunication%20GLB.glb';
 
 function loadDefaultModel(){
   loader.load(DEFAULT_MODEL_URL,g=>{
