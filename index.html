@@ -1,0 +1,58 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exhibition WebGL — Unity Style Editor</title><link rel="stylesheet" href="style.css"><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js"}}</script></head>
+<body>
+<div id="app"></div>
+<div id="loading">Loading WebGL Editor<div class="bar"></div></div>
+<header class="unityTop">
+  <div class="brand"><b>ACADEMY 3D LEARNING LAB</b><small>Interactive WebGL Learning Environment</small></div>
+  <div class="toolbar">
+    <button id="walk">▶ Start Walkthrough</button><button id="reset">Reset View</button><button id="full">Fullscreen</button>
+  </div>
+</header>
+<aside class="leftDock">
+  <div class="dockTitle">LEARNING SCENE <span id="assetCount">0 assets</span></div>
+  <label class="loadModel" for="file">＋ Load Learning Model + Textures + HDRI</label>
+  <input id="file" type="file" multiple accept=".glb,.gltf,.bin,.png,.jpg,.jpeg,.webp,.hdr">
+  <div class="learningHint"><b>LEARN BY EXPLORING</b><span>Move through the scene and click any visible asset to study it.</span><span>Mouse stays visible for selection.</span><span><kbd>W A S D</kbd> Move · <kbd>Right Mouse</kbd> Look · <kbd>Click</kbd> Inspect · <kbd>Esc</kbd> Exit</span></div>
+</aside>
+<section id="hoverInfo"><div class="hoverTitle" id="hoverName">Asset</div><div class="hoverMeta" id="hoverMeta">Move the cursor over an asset</div></section>
+<div id="walkHelp" class="walkHelp"><b>PLAY MODE</b> &nbsp; WASD / Arrow Keys = Move &nbsp; • &nbsp; Right Mouse = Look &nbsp; • &nbsp; E = Interact &nbsp; • &nbsp; Esc = Exit</div>
+<div id="interactionPrompt"></div>
+<section id="assetControls">
+  <div class="assetCardHeader">
+    <button id="closeControls" class="assetClose">×</button>
+  </div>
+  <div class="assetPreview" id="assetPreview">
+    <div class="previewBadge">↻ 3D preview · drag to rotate</div>
+  </div>
+  <div class="assetCardBody">
+    <div class="assetTopLine">
+      <span id="selectedCategory" class="categoryBadge">LEARNING OBJECT</span>
+      <span id="detailPrice" class="assetPrice">—</span>
+    </div>
+    <div class="assetNameRow">
+      <h2 id="selectedName">Selected Asset</h2>
+    </div>
+    <p class="assetDescription" id="assetDescription">Interactive 3D asset.</p>
+    <div class="assetMetaRows">
+      <div><span>SKU</span><b id="detailSku">—</b></div>
+      <div><span>Supplier</span><b id="detailSupplier">Learning Lab</b></div>
+      <div class="metaFull"><span>Dimensions</span><b id="detailDimensions">—</b></div>
+    </div>
+    <div class="assetSection learningFacts">
+      <b>Learning Details</b>
+      <small id="learningFact">Study this object in 3D and compare its form, size and materials with the real-world application.</small>
+    </div>
+    <div class="assetTechnical">
+      <div><span>Type</span><b id="detailType">Mesh</b></div>
+      <div><span>Triangles</span><b id="detailTriangles">—</b></div>
+      <div><span>Vertices</span><b id="detailVertices">—</b></div>
+      <div><span>Materials</span><b id="detailMaterials">—</b></div>
+    </div>
+    <div class="assetControlsActions">
+      <button id="focusAsset">◉ Focus Camera</button>
+      <button id="returnWalk" class="secondary">Return</button>
+    </div>
+  </div>
+</section>
+<script type="module" src="app.js"></script></body></html>
