@@ -299,6 +299,88 @@ function populateAssets(){
  const count=document.querySelector('#assetCount');if(count)count.textContent=meshes.length+' learning objects';
 }
 // Asset panel is intentionally removed from the main UI; selection is done directly in walkthrough mode.
+// Automatically load the Academy GLB from GitHub Pages
+const DEFAULT_MODEL_URL =
+  'https://github.com/maheshkota1906/3D-WebGL-Academy/raw/refs/heads/main/assets/MyCommunication%20GLB.glb';
+
+function loadDefaultModel(){
+  loader.load(DEFAULT_MODEL_URL,g=>{
+    if(model)scene.remove(model);
+
+    colliders.forEach(c=>scene.remove(c.helper));
+    colliders.clear();
+
+    meshColliders.clear();
+    meshColliderHelpers.forEach(h=>{
+      scene.remove(h);
+      h.traverse(x=>{
+        x.geometry?.dispose();
+        x.material?.dispose();
+      });
+    });
+    meshColliderHelpers.clear();
+
+    clearHighlight();
+
+    model=g.scene;
+    scene.add(model);
+
+    model.traverse(o=>{
+      if(o.isMesh){
+        o.castShadow=true;
+        o.receiveShadow=true;
+        o.frustumCulled=false;
+        o.userData.originalRotation=o.rotation.clone();
+
+        if(Array.isArray(o.material)){
+          o.material=o.material.map(m=>m?.clone?.()||m);
+        }else if(o.material?.clone){
+          o.material=o.material.clone();
+        }
+
+        materialsOf(o).forEach(m=>{
+          m.side=THREE.DoubleSide;
+          m.depthTest=true;
+          m.depthWrite=true;
+
+          if(m.metalnessMap||m.roughnessMap){
+            m.metalness=Math.max(m.metalness,0);
+            m.roughness=Math.max(m.roughness,.04);
+          }
+
+          if(m.normalMap){
+            m.normalScale?.set(1,1);
+          }
+
+          if(m.alphaMap){
+            m.transparent=true;
+            m.depthWrite=false;
+            m.alphaTest=m.alphaTest||0.01;
+          }
+
+          m.needsUpdate=true;
+        });
+      }
+    });
+
+    fitModel();
+    populateAssets();
+    refreshInteractiveObjects();
+
+    if(placeholder)placeholder.visible=false;
+
+    grid.visible=false;
+    ground.visible=false;
+
+    setTimeout(()=>{
+      if(model&&!walking)enterWalk();
+    },80);
+
+  },undefined,err=>{
+    console.error('Default GLB failed to load:',err);
+    alert('Could not load the Academy GLB file from GitHub.');
+  });
+}
 
 document.querySelector('#file').onchange=e=>{
  const files=[...e.target.files];const file=files.find(f=>/\.(glb|gltf)$/i.test(f.name));const hdri=files.find(f=>/\.hdr$/i.test(f.name));if(hdri)loadHDRI(hdri);if(!file)return;
@@ -339,7 +421,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{
  }
  if(!transformControls.dragging)clearHighlight();
 },true);
-
+loadDefaultModel();
 document.addEventListener('pointerdown',e=>{
  if(e.button!==0||!model)return;
  if(e.target!==renderer.domElement)return;
