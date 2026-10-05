@@ -33,6 +33,12 @@ const fileTextureURLs=new Map();
 const manager=new THREE.LoadingManager();
 manager.setURLModifier(url=>{const clean=url.split('?')[0].split('#')[0];const name=decodeURIComponent(clean.split('/').pop()||'');return fileTextureURLs.get(name)||url});
 const loader=new GLTFLoader(manager);const textureLoader=new THREE.TextureLoader();const rgbeLoader=new RGBELoader();
+const loadingEl=document.querySelector('#loading'),loadingText=document.querySelector('#loadingText'),loadingStatus=document.querySelector('#loadingStatus'),loadingProgress=document.querySelector('#loadingProgress'),errorOverlay=document.querySelector('#errorOverlay'),errorText=document.querySelector('#errorText');
+function setLoading(message='Loading WebGL environment…',progress=20,status='Preparing 3D scene'){if(loadingText)loadingText.textContent=message;if(loadingStatus)loadingStatus.textContent=status;if(loadingProgress)loadingProgress.style.width=Math.max(4,Math.min(100,progress))+'%';if(loadingEl)loadingEl.style.display='grid'}
+function hideLoading(){if(loadingProgress)loadingProgress.style.width='100%';setTimeout(()=>{if(loadingEl)loadingEl.style.display='none'},180)}
+function showLoadError(message){if(errorText)errorText.textContent=message;if(errorOverlay)errorOverlay.style.display='grid';if(loadingEl)loadingEl.style.display='none'}
+function clearLoadError(){if(errorOverlay)errorOverlay.style.display='none'}
+
 const pmrem=new THREE.PMREMGenerator(renderer);pmrem.compileEquirectangularShader();
 const colliders=new Map();let showColliders=false;let hdriTexture=null;let hdriSourceURL=null;
 const walkRaycaster=new THREE.Raycaster();
@@ -304,6 +310,7 @@ const DEFAULT_MODEL_URL =
   'https://raw.githubusercontent.com/maheshkota1906/3D-WebGL-Academy/refs/heads/main/assets/MyCommunication%20GLB.glb';
 
 function loadDefaultModel(){
+  clearLoadError(); setLoading('Loading Academy 3D scene…',25,'Downloading GLB model');
   loader.load(DEFAULT_MODEL_URL,g=>{
     if(model)scene.remove(model);
 
@@ -324,6 +331,7 @@ function loadDefaultModel(){
 
     model=g.scene;
     scene.add(model);
+    setLoading('Building learning scene…',65,'Processing PBR materials and collision data');
 
     model.traverse(o=>{
       if(o.isMesh){
@@ -372,13 +380,12 @@ function loadDefaultModel(){
     grid.visible=false;
     ground.visible=false;
 
-    setTimeout(()=>{
-      if(model&&!walking)enterWalk();
-    },80);
+    setLoading('Starting Academy…',92,'Preparing walkthrough and interactions');
+    setTimeout(()=>{ if(model&&!walking)enterWalk(); hideLoading(); },120);
 
   },undefined,err=>{
     console.error('Default GLB failed to load:',err);
-    alert('Could not load the Academy GLB file from GitHub.');
+    showLoadError('Could not load the Academy GLB from GitHub. Check the repository path, file name, or network access.');
   });
 }
 
@@ -438,6 +445,10 @@ renderer.domElement.addEventListener('pointermove',e=>{
 });
 renderer.domElement.addEventListener('pointerup',e=>{if(e.button===2){lookDragging=false;renderer.domElement.style.cursor='default'}});
 renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+let touchLookId=null,touchLX=0,touchLY=0;
+renderer.domElement.addEventListener('touchstart',e=>{if(!walking||e.touches.length!==1)return;const t=e.touches[0];touchLookId=t.identifier;touchLX=t.clientX;touchLY=t.clientY},{passive:true});
+renderer.domElement.addEventListener('touchmove',e=>{if(!walking||touchLookId===null)return;const t=[...e.touches].find(x=>x.identifier===touchLookId);if(!t)return;const dx=t.clientX-touchLX,dy=t.clientY-touchLY;touchLX=t.clientX;touchLY=t.clientY;yaw-=dx*.004;pitch=THREE.MathUtils.clamp(pitch-dy*.004,-1.35,1.35);camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0)},{passive:true});
+renderer.domElement.addEventListener('touchend',e=>{if(![...e.touches].some(t=>t.identifier===touchLookId))touchLookId=null},{passive:true});
 
 function detectWalkGround(){
  if(!model)return {y:0,box:null,mesh:null};
@@ -570,7 +581,7 @@ function enterWalk(){
  const didSpawn=academySpawn();
  if(!didSpawn){const dir=new THREE.Vector3();camera.getWorldDirection(dir);yaw=Math.atan2(-dir.x,-dir.z);pitch=Math.asin(THREE.MathUtils.clamp(dir.y,-1,1));camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0);camera.position.y=walkGroundY+eyeHeight;}
 }
-function exitWalk(){walking=false;lookDragging=false;controls.enabled=true;transformControls.visible=!!selected;document.querySelector('aside').style.display='block';if(selected)document.querySelector('#assetControls').style.display='block';document.querySelector('#walk').classList.remove('walking');document.querySelector('#walk').textContent='Walkthrough';document.querySelector('#walkHelp').classList.remove('show');renderer.domElement.style.cursor='default'}
+function exitWalk(){walking=false;updateMobileUI();lookDragging=false;controls.enabled=true;transformControls.visible=!!selected;document.querySelector('aside').style.display='block';if(selected)document.querySelector('#assetControls').style.display='block';document.querySelector('#walk').classList.remove('walking');document.querySelector('#walk').textContent='Walkthrough';document.querySelector('#walkHelp').classList.remove('show');renderer.domElement.style.cursor='default'}
 document.querySelector('#walk').onclick=()=>walking?exitWalk():enterWalk();
 
 addEventListener('keydown',e=>{
@@ -609,6 +620,14 @@ function updateWalk(dt){
 }
 document.querySelector('#reset').onclick=()=>{if(walking)exitWalk();fitModel()};
 document.querySelector('#full').onclick=()=>document.documentElement.requestFullscreen?.();
+const helpPanel=document.querySelector('#helpPanel');document.querySelector('#helpBtn')?.addEventListener('click',()=>helpPanel.style.display='grid');document.querySelector('#closeHelp')?.addEventListener('click',()=>helpPanel.style.display='none');document.querySelector('#retryLoad')?.addEventListener('click',()=>{clearLoadError();loadDefaultModel()});
+const mobileControls=document.querySelector('#mobileControls');
+function setVirtualKey(code,on){keys[code]=on}
+document.querySelectorAll('.mBtn[data-key]').forEach(btn=>{const code=btn.dataset.key;const on=()=>setVirtualKey(code,true),off=()=>setVirtualKey(code,false);['pointerdown','touchstart'].forEach(ev=>btn.addEventListener(ev,e=>{e.preventDefault();on()}));['pointerup','pointercancel','pointerleave','touchend'].forEach(ev=>btn.addEventListener(ev,e=>{e.preventDefault();off()}));});
+document.querySelector('#mobileInteract')?.addEventListener('click',()=>{if(walking){if(climbing)stopClimb();else interact()}});
+function updateMobileUI(){mobileControls?.classList.toggle('show',walking&&innerWidth<=900)}
+addEventListener('resize',updateMobileUI);
+
 
 function makePlaceholder(){
  const p=new THREE.Group();p.name='Placeholder';placeholder=p;scene.add(p);const mat=c=>new THREE.MeshStandardMaterial({color:c,roughness:.35});
@@ -616,6 +635,6 @@ function makePlaceholder(){
  box(0,2.5,-3,8,5,.25,0x202832);box(-3.9,2.5,0,.25,5,6,0x202832);box(3.9,2.5,0,.25,5,6,0x202832);box(0,.12,0,7.7,.24,5.8,0x22282e);box(0,2,-2.82,6.8,3.4,.12,0x11161c);box(-2.5,1.2,-2.7,1.8,.12,.5,0xff8a32);box(2.5,1.2,-2.7,1.8,.12,.5,0xff8a32);
 }
 makePlaceholder();camera.position.set(7,5,9);controls.target.set(0,1.5,0);
-document.querySelector('#loading').remove();
+setLoading('Ready',100,'Academy scene ready');hideLoading();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 let last=performance.now();renderer.setAnimationLoop(()=>{const now=performance.now(),dt=Math.min((now-last)/1000,.05);last=now;if(walking){updateWalk(dt);updateInteractive()}else controls.update();if(previewControls)previewControls.update();colliders.forEach((_,o)=>updateCollider(o));if(selectionShape&&selected)updateShapeOutline(selectionShape);meshColliderHelpers.forEach(h=>h.children.forEach(line=>{if(line.userData.sourceMesh)line.matrix.copy(line.userData.sourceMesh.matrixWorld)}));renderer.render(scene,camera);if(previewRenderer&&previewScene)previewRenderer.render(previewScene,previewCamera)});
