@@ -2,11 +2,12 @@
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exhibition WebGL — Unity Style Editor</title><link rel="stylesheet" href="style.css"><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js"}}</script></head>
 <body>
 <div id="app"></div>
-<div id="loading">Loading WebGL Editor<div class="bar"></div></div>
+<div id="loading"><div class="loadingCard"><strong>ACADEMY 3D LEARNING LAB</strong><span id="loadingText">Loading WebGL environment…</span><div class="bar"><i id="loadingProgress"></i></div><small id="loadingStatus">Preparing 3D scene</small></div></div>
+<div id="errorOverlay"><div class="errorCard"><b>3D SCENE COULD NOT LOAD</b><p id="errorText">Check the GLB URL or local model files and try again.</p><button id="retryLoad">Retry Scene</button></div></div>
 <header class="unityTop">
   <div class="brand"><b>ACADEMY 3D LEARNING LAB</b><small>Interactive WebGL Learning Environment</small></div>
   <div class="toolbar">
-    <button id="walk">▶ Start Walkthrough</button><button id="reset">Reset View</button><button id="full">Fullscreen</button>
+    <button id="walk">▶ Start Walkthrough</button><button id="reset">Reset View</button><button id="full">Fullscreen</button><button id="helpBtn">Help</button>
   </div>
 </header>
 <aside class="leftDock">
@@ -18,6 +19,8 @@
 <section id="hoverInfo"><div class="hoverTitle" id="hoverName">Asset</div><div class="hoverMeta" id="hoverMeta">Move the cursor over an asset</div></section>
 <div id="walkHelp" class="walkHelp"><b>PLAY MODE</b> &nbsp; WASD / Arrow Keys = Move &nbsp; • &nbsp; Right Mouse = Look &nbsp; • &nbsp; E = Interact &nbsp; • &nbsp; Esc = Exit</div>
 <div id="interactionPrompt"></div>
+<div id="mobileControls"><button class="mBtn mUp" data-key="KeyW">▲</button><button class="mBtn mLeft" data-key="KeyA">◀</button><button class="mBtn mDown" data-key="KeyS">▼</button><button class="mBtn mRight" data-key="KeyD">▶</button><button class="mBtn mInteract" id="mobileInteract">E</button></div>
+<div id="helpPanel"><div class="helpCard"><button id="closeHelp">×</button><h3>Academy Controls</h3><p><b>Walkthrough:</b> WASD / Arrow Keys to move, Right Mouse to look.</p><p><b>Inspect:</b> Click any asset. Press <kbd>F</kbd> to focus it.</p><p><b>Interact:</b> Press <kbd>E</kbd> near doors and ladders.</p><p><b>Mobile:</b> Use the movement pad and drag on the scene to look.</p><p><b>Materials:</b> GLB PBR maps and HDRI lighting are preserved.</p></div></div>
 <section id="assetControls">
   <div class="assetCardHeader">
     <button id="closeControls" class="assetClose">×</button>
