@@ -483,7 +483,7 @@
   <!-- Internal Walkthrough Overlay (hidden; direct enter handled smoothly by start-page & help modal) -->
   <div id="welcome-overlay" class="hidden fixed inset-0 z-40 bg-neutral-950/40 flex items-center justify-center p-3 sm:p-6 overflow-y-auto transition-opacity duration-200">
     <div class="bg-white text-neutral-900 border border-neutral-200 rounded-2xl p-5 sm:p-7 max-w-md w-full my-auto shadow-xl relative max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-y-auto">
-      <h2 class="text-lg sm:text-xl font-semibold tracking-tight text-neutral-900 text-center mb-1">Architectural Walkthrough</h2>
+      <h2 class="text-lg sm:text-xl font-semibold tracking-tight text-neutral-900 text-center mb-1">Telecom Showroom Walkthrough</h2>
       <button id="start-walkthrough-btn" class="w-full py-2.5 sm:py-3 px-4 bg-neutral-900 hover:bg-neutral-800 active:bg-black text-white font-medium text-xs sm:text-sm rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm" aria-label="Start Walkthrough Exploration">
         <span>Enter Walkthrough</span>
       </button>
@@ -583,7 +583,7 @@
   <div id="loading-overlay" class="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 transition-opacity duration-200">
     <div id="loading-spinner" class="spinner mb-3"></div>
     <h2 id="loading-title" class="text-base font-semibold text-neutral-900 mb-1">Preparing 3D Interior</h2>
-    <p id="loading-subtitle" class="text-neutral-500 text-xs max-w-sm text-center">Assembling architectural geometries and lighting...</p>
+    <p id="loading-subtitle" class="text-neutral-500 text-xs max-w-sm text-center">Loading telecom tower and communication equipment...</p>
     <div id="loading-bar-wrap" class="w-48 h-1 bg-neutral-200 rounded-full mt-3 overflow-hidden hidden">
       <div id="loading-bar" class="h-full bg-neutral-900 w-0 transition-all duration-150"></div>
     </div>
@@ -2057,7 +2057,7 @@
         if (!res.ok) { this.hideLoading(); return; }
         cfg = await res.json();
       } catch (err) {
-        console.info('No walkthrough.json found - showing the built-in sample room.');
+        console.error('[Walkthrough] walkthrough.json could not be loaded. The sample showroom is disabled.', err);
         this.hideLoading();
         return;
       }
