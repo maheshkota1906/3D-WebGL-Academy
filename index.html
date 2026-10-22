@@ -2359,8 +2359,9 @@
           });
         });
         (cfg.colliders || []).forEach((n) => this.findNodes(model, n).forEach((o) => level.extraColliders.push(o)));
-      } else if (!cfg) {
-        // Raw GLB with no JSON: never register the entire GLB as one product.
+      } else {
+        // Register model components when no explicit products list is supplied,
+        // including GLBs loaded through walkthrough.json.
         // Prefer the actual asset groups under the exported scene wrapper.
         let roots = model.children.filter((child) =>
           this.hasMesh(child) &&
