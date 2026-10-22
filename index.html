@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>InteriorSpace 3D Pro &bull; Architectural Walkthrough</title>
+  <title>MY Communication Academy &bull; Telecom Showroom</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23171717'/%3E%3Cpath d='M16 6l9 5v10l-9 5-9-5V11zM7 11l9 5 9-5M16 16v10' fill='none' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
   
   <!-- Tailwind CSS CDN -->
@@ -320,7 +320,7 @@
           <h1 id="brand-title" class="font-semibold text-xs sm:text-sm tracking-tight text-neutral-900 leading-none truncate max-w-[85px] xs:max-w-[140px] sm:max-w-none">MY Communication Academy</h1>
           <span class="text-[9px] uppercase tracking-wider px-1 py-0.2 rounded bg-neutral-100 text-neutral-600 font-semibold border border-neutral-200 flex-shrink-0">3D</span>
         </div>
-        <p id="model-status-text" class="hidden sm:block text-[10px] text-neutral-500 truncate max-w-[180px] mt-0.5">Architectural Suite &bull; Walkthrough</p>
+        <p id="model-status-text" class="hidden sm:block text-[10px] text-neutral-500 truncate max-w-[180px] mt-0.5">Telecom Tower &amp; Communication Systems</p>
       </div>
     </div>
 
@@ -686,8 +686,8 @@
     headBob: true,
     outlineColor: 0xff4d2e,  // hover / selected product outline
     interactDistance: 10,    // max metres a product can be picked from
-    configUrl: 'walkthrough.json', // auto-loaded next to this HTML (or ?config=path.json)
-    showLoadButtons: true,   // show the manual GLB file selector
+    configUrl: '/walkthrough.json', // load the academy telecom scene from the site root
+    showLoadButtons: false,  // the academy scene is loaded automatically; no manual upload
     mouseSensitivity: 0.0022,
     touchSensitivity: 0.0035,
     playerRadius: 0.35,      // Cylinder collision radius in meters
@@ -1476,8 +1476,8 @@
       this.setupCallout();
       this.setupSettings();
       
-      // Build default architectural showroom level
-      this.buildDefaultLevel();
+      // Do not instantiate the built-in Architectural Suite sample.
+      // The visitor should see only the GLB configured in /walkthrough.json.
       this.tryLoadConfig();
 
       // Animation Loop
