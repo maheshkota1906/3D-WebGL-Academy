@@ -1495,8 +1495,9 @@
 
       this.scene = new THREE.Scene();
       // Architectural neutral daylight background & subtle fog
-      this.scene.background = new THREE.Color(0xeeece6);
-      this.scene.fog = new THREE.FogExp2(0xeeece6, 0.015);
+      // Neutral outdoor sky tone; keep distant tower/fence detail from disappearing into white fog.
+      this.scene.background = new THREE.Color(0xb9c8d5);
+      this.scene.fog = new THREE.FogExp2(0xb9c8d5, 0.004);
       this.hdriBackground = null;
       this.hdriEnvironment = null;
 
@@ -1508,7 +1509,7 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.0;
+      this.renderer.toneMappingExposure = 0.82;
       this.renderer.outputEncoding = THREE.sRGBEncoding; // correct colour: textures look as authored
       this.scene.environment = buildEnvTexture(this.renderer);
       this.loadEnvironmentHDRI();
@@ -1575,11 +1576,11 @@
 
     setupLighting() {
       // Soft ambient light
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.48);
       this.scene.add(ambientLight); this.rig.amb = ambientLight;
 
       // Primary daylight sun
-      const sunLight = new THREE.DirectionalLight(0xfff8ee, 1.4);
+      const sunLight = new THREE.DirectionalLight(0xfff8ee, 1.05);
       sunLight.position.set(8, 14, 6);
       sunLight.castShadow = true;
       sunLight.shadow.mapSize.set(2048, 2048);
@@ -1595,7 +1596,7 @@
       this.scene.add(sunLight); this.rig.sun = sunLight;
 
       // Soft architectural warm fill (replaces colored artificial lighting)
-      const architecturalFill = new THREE.PointLight(0xfff7ed, 0.6, 16);
+      const architecturalFill = new THREE.PointLight(0xfff7ed, 0.28, 16);
       architecturalFill.position.set(-3, 3.2, -2);
       this.scene.add(architecturalFill); this.rig.fill = architecturalFill;
 
