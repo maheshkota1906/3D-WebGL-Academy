@@ -9,12 +9,6 @@
   let yaw = 0, pitch = 0;
   let keys = {};
 
-  // ATS cabinet doors: animated in code, without changing the GLB asset.
-  let atsDoors = [];
-  let atsDoorsOpen = false;
-  const ATS_DOOR_OPEN_ANGLE = Math.PI / 2;
-  const ATS_DOOR_ANIMATION_SPEED = 2.4;
-
   const MODEL_URL = 'assets/MyCommunicationSite_optimized.glb';
 
   const state = {
@@ -207,7 +201,6 @@
         });
 
         scene.add(model);
-        setupAtsDoors(model);
         frameModel(model);
 
         $('modelName').textContent = fileName;
@@ -272,110 +265,7 @@
       o = o.parent;
     }
 
-    const ats = findAncestorNamed(o, 'ATS');
-    if (ats && atsDoors.length) {
-      toggleAtsDoors();
-    }
-
     select(o);
-  }
-
-  function findAncestorNamed(object, targetName) {
-    const target = targetName.toLowerCase();
-    let current = object;
-
-    while (current) {
-      if ((current.name || '').trim().toLowerCase() === target) return current;
-      current = current.parent;
-    }
-    return null;
-  }
-
-  function setupAtsDoors(root) {
-    atsDoors = [];
-    atsDoorsOpen = false;
-
-    const ats = findAncestorNamedFromRoot(root, 'ATS');
-    if (!ats) {
-      console.warn('ATS door animation: ATS parent was not found in the GLB.');
-      return;
-    }
-
-    const doorNames = ['SM_Door_01', 'SM_Door_02'];
-    const atsBounds = new THREE.Box3().setFromObject(ats);
-    const atsCenter = atsBounds.getCenter(new THREE.Vector3());
-
-    doorNames.forEach((doorName, index) => {
-      let door = null;
-      ats.traverse(node => {
-        if (!door && (node.name || '').trim().toLowerCase() === doorName.toLowerCase()) door = node;
-      });
-
-      if (!door) {
-        console.warn('ATS door animation: mesh not found:', doorName);
-        return;
-      }
-
-      door.updateWorldMatrix(true, false);
-      const bounds = new THREE.Box3().setFromObject(door);
-      const doorCenter = bounds.getCenter(new THREE.Vector3());
-
-      // Hinge at the outer vertical edge of each door (cabinet spans X axis).
-      const hingeWorld = new THREE.Vector3(
-        index === 0 ? bounds.min.x : bounds.max.x,
-        bounds.min.y,
-        doorCenter.z
-      );
-
-      const parent = door.parent;
-      if (!parent) return;
-
-      parent.updateWorldMatrix(true, false);
-      const hingeLocal = parent.worldToLocal(hingeWorld.clone());
-
-      const pivot = new THREE.Object3D();
-      pivot.name = doorName + '_CodeHinge';
-      parent.add(pivot);
-      pivot.position.copy(hingeLocal);
-
-      // Reparent while preserving the original world transform.
-      pivot.attach(door);
-
-      atsDoors.push({
-        name: doorName,
-        pivot,
-        targetAngle: 0,
-        direction: index === 0 ? -1 : 1
-      });
-    });
-
-    if (atsDoors.length) console.info('ATS door animation ready:', atsDoors.map(d => d.name));
-  }
-
-  function findAncestorNamedFromRoot(root, targetName) {
-    let found = null;
-    const target = targetName.toLowerCase();
-    root.traverse(node => {
-      if (!found && (node.name || '').trim().toLowerCase() === target) found = node;
-    });
-    return found;
-  }
-
-  function toggleAtsDoors() {
-    atsDoorsOpen = !atsDoorsOpen;
-    atsDoors.forEach(door => {
-      door.targetAngle = atsDoorsOpen ? door.direction * ATS_DOOR_OPEN_ANGLE : 0;
-    });
-  }
-
-  function updateAtsDoors(dt) {
-    atsDoors.forEach(door => {
-      const current = door.pivot.rotation.y;
-      const difference = door.targetAngle - current;
-      const step = ATS_DOOR_ANIMATION_SPEED * dt;
-      if (Math.abs(difference) <= step) door.pivot.rotation.y = door.targetAngle;
-      else door.pivot.rotation.y += Math.sign(difference) * step;
-    });
   }
 
   function select(o) {
@@ -536,7 +426,6 @@
     const dt = Math.min(clock.getDelta(), 0.05);
 
     update(dt);
-    updateAtsDoors(dt);
     renderer.render(scene, camera);
   }
 
