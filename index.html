@@ -3660,6 +3660,58 @@
         });
       });
 
+      // 2b) Outward-opening equipment cabinet doors (ATS, battery bank, rectifier).
+      // These GLBs often do not contain authored hinge pivots, so create a pivot at
+      // the side edge of each named door while preserving its closed pose.
+      const cabinetContext = /(ATS|Battery|Batteries|Rectifier|RectifierSystem|RectifierModule)/i;
+      const cabinetDoors = [];
+      root.traverse((o) => {
+        if (!o.name || !/(?:Door|DoorLeaf|CabinetDoor|PanelDoor)/i.test(o.name)) return;
+        if (/^Product_Door$/i.test(o.name) || hasAnc(o, /^Product_Door$/i)) return;
+        if (hasAnc(o, cabinetContext)) cabinetDoors.push(o);
+      });
+      const hingedLeaves = new Set();
+      cabinetDoors.forEach((leaf) => {
+        if (hingedLeaves.has(leaf) || !leaf.parent || !this.hasMesh(leaf)) return;
+        // Avoid pivoting a container that includes other independently named doors.
+        const nestedDoor = [];
+        leaf.traverse((n) => { if (n !== leaf && /(?:Door|DoorLeaf|CabinetDoor|PanelDoor)/i.test(n.name)) nestedDoor.push(n); });
+        if (nestedDoor.length) return;
+        const parent = leaf.parent;
+        const bounds = localBox(parent, leaf);
+        if (bounds.isEmpty()) return;
+        const size = bounds.getSize(V());
+        if (size.y < 0.15) return;
+        // Door width is its larger horizontal dimension; hinge is placed on the left edge.
+        const widthAxis = size.x >= size.z ? 'x' : 'z';
+        const hingeLocal = bounds.getCenter(V());
+        hingeLocal[widthAxis] = bounds.min[widthAxis];
+        const pivot = new THREE.Object3D();
+        pivot.name = '__' + leaf.name + '_OutwardHinge';
+        parent.add(pivot);
+        pivot.position.copy(hingeLocal);
+        pivot.updateMatrixWorld(true);
+        pivot.attach(leaf);
+        pivot.updateMatrixWorld(true);
+        const closedQuat = pivot.quaternion.clone();
+        const openQuat = closedQuat.clone().multiply(
+          new THREE.Quaternion().setFromAxisAngle(Y, -Math.PI / 2)
+        );
+        const it = add({
+          kind: 'hinge',
+          label: leaf.name,
+          pivot,
+          openQuat,
+          closedQuat,
+          t: 0,
+          target: 0,
+          isCabinetDoor: true
+        });
+        leaf.traverse((x) => { if (x.isMesh) x.userData.interact = it; });
+        hingedLeaves.add(leaf);
+        console.info('[CabinetDoor] Outward hinge registered:', leaf.name, 'under', parent.name);
+      });
+
       // 3) Product_ladder: authored ladder climb between the ground and SM_Platform.
       // The ladder itself is never a selectable product. E starts a smooth climb;
       // direction is chosen from the player's current height so the same interaction
