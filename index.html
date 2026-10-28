@@ -1901,7 +1901,7 @@
       modelRoot.scale.copy(origScale);
       modelRoot.updateMatrixWorld(true);
 
-      const normalizedNodeName = String(modelRoot.name || '').toLowerCase().replace(/[ _-]+/g, '');
+      const normalizedNodeName = String(modelRoot.name || '').toLowerCase().trim().replace(/_?\(\d+\)$/, '').replace(/[_-]\d+$/, '').replace(/[ _-]+/g, '');
       const displayName = normalizedNodeName === 'ats' || normalizedNodeName === 'atspanel'
         ? 'ATS Panel'
         : (metadata.name || modelRoot.name || "Showroom Furnishing");
@@ -2647,7 +2647,7 @@
       };
       // Resolve descriptions against every node in the selected GLB hierarchy, not only the registered parent name.
       // Duplicate GLB names such as SM_Tower_1 and SM_Tower_2 reuse the base asset description.
-      const normalizedAssetName = (name) => String(name || '').toLowerCase().trim().replace(/[_-]\d+$/, '').replace(/[ _-]+/g, '');
+      const normalizedAssetName = (name) => String(name || '').toLowerCase().trim().replace(/_?\(\d+\)$/, '').replace(/[_-]\d+$/, '').replace(/[ _-]+/g, '');
       const knownDescriptionKeys = new Set([...Object.keys(descriptions), ...Object.keys(englishDescriptions)]);
       // The Unity scene may use friendly display names while the description dictionaries use the original SM_/CBL_ IDs.
       const assetNameAliases = {
