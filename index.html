@@ -5083,7 +5083,7 @@
       Object.entries(t).forEach(([k, v]) => { if (k !== 'name') r.style.setProperty('--' + k, v); });
       r.style.setProperty('--sel', s.selColor); r.style.setProperty('--ret', s.reticleColor);
       r.style.setProperty('--ret-size', s.reticleSize + 'px'); r.dataset.ret = s.reticleShape; r.dataset.theme = s.theme;
-      if (!this.hdriBackground) this.scene.background.set(t.bg); this.scene.fog.color.set(t.bg).convertSRGBToLinear();   // preserve the HDRI background when one has loaded
+      if (!this.hdriBackground && this.scene.background && this.scene.background.isColor) this.scene.background.set(t.bg); this.scene.fog.color.set(t.bg).convertSRGBToLinear();   // preserve texture/HDRI backgrounds when present
       this.outlineMeshes.forEach((o) => o.material.color.copy(lin(s.outlineColor)));
       this.paintTint();
       this.camera.fov = s.fov; this.camera.updateProjectionMatrix();
