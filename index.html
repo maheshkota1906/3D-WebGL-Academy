@@ -2558,8 +2558,10 @@
       productRoot.traverse((node) => nodes.push(node));
       const hasDoorMeshes = nodes.some((node) => /^sm_door_0?[12]$/i.test(node.name || ''));
 
-      if (!(rootName === 'ats' || /^ats0?1$/.test(rootName) ||
-            productName === 'ats' || productName === 'ats01' || hasDoorMeshes)) return;
+      const isAtsVariant = rootName === 'ats' || rootName === 'ats01' || rootName === 'ats1' ||
+        productName === 'ats' || productName === 'ats01' || productName === 'ats1';
+
+      if (!(isAtsVariant || hasDoorMeshes)) return;
 
       productRoot.userData.isAtsCabinet = true;
 
