@@ -1412,6 +1412,9 @@
       this.audioManager.getSettings = () => this.settings;
       if (this.audioManager.synth) this.audioManager.synth.getVoices();   // warm up the voice list
       this.playerVelocity = new THREE.Vector3();
+      // First-person jump physics; vertical motion is resolved against the sampled floor.
+      this.jumpVelocity = 0;
+      this.isGrounded = true;
       this.directionGuide = null;
       this.directionGuideTime = 0;
 
@@ -3222,6 +3225,19 @@
 
       // Locomotion strictly enabled ONLY in EXPLORE mode
       if (this.currentState === AppState.EXPLORE) {
+        // Spacebar jump: one jump at a time, only while grounded.
+        if (e.code === 'Space') {
+          const target = e.target;
+          const typing = target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName));
+          if (!typing) {
+            e.preventDefault();
+            if (this.isGrounded && !this.ladderClimb && !this.cameraAnim.active) {
+              this.jumpVelocity = 5.2;
+              this.isGrounded = false;
+            }
+          }
+          return;
+        }
         switch (e.code) {
           case 'KeyW':
           case 'ArrowUp': this.keyState.forward = true; break;
@@ -4590,9 +4606,23 @@
       const bob = APP_CONFIG.headBob ? Math.sin(this.bobTime) * 0.018 * Math.min(1, spd / 2) : 0;
 
       // Sample the actual floor directly beneath the player instead of using
-      // the lowest Y value anywhere in the GLB.
+      // the lowest Y value anywhere in the GLB. Apply vertical jump physics while
+      // preserving the existing floor snap and head bob when grounded.
       const floorY = lv ? this.groundY(currentPos.x, currentPos.z, currentPos.y + 0.75) : 0;
-      currentPos.y = floorY + eye + bob;
+      const groundCameraY = floorY + eye;
+      if (!this.isGrounded || this.jumpVelocity > 0) {
+        this.jumpVelocity -= 14.5 * delta;
+        currentPos.y += this.jumpVelocity * delta;
+        if (currentPos.y <= groundCameraY) {
+          currentPos.y = groundCameraY + bob;
+          this.jumpVelocity = 0;
+          this.isGrounded = true;
+        }
+      } else {
+        currentPos.y = groundCameraY + bob;
+        this.jumpVelocity = 0;
+        this.isGrounded = true;
+      }
       // Direction arrows disabled: keep the walkthrough scene clean while moving.
       if (this.directionGuide) this.directionGuide.visible = false;
     }
