@@ -4005,19 +4005,23 @@
         return n.y >= 0.55;
       };
 
-      const h = hits.find((i) => {
-        if (!isFloorHit(i)) return false;
-        // At the doorway, choose the closest valid floor surface in the
-        // direction of travel, allowing automatic step-up/step-down without
-        // requiring a jump key. Outside the doorway retain the normal step limit.
-        if (inAccess) {
-          if (i.point.y < minY || i.point.y > maxY) return false;
-          return true;
-        }
-        if (i.point.y < minY || i.point.y > maxY) return false;
-        if (i.point.y > currentFeetY + 0.35) return false;
+      // Resolve only a floor close to the player's current feet. The old
+      // first-hit selection could accept the shelter roof after a jump, because
+      // doorway tolerance was also applied to elevated surfaces.
+      const floorCandidates = hits.filter((hit) => {
+        if (!isFloorHit(hit)) return false;
+        if (hit.point.y < minY || hit.point.y > maxY) return false;
+        const stepUpLimit = inAccess ? 0.55 : 0.35;
+        if (hit.point.y > currentFeetY + stepUpLimit) return false;
+        // If the player is airborne, do not snap onto a surface above the
+        // feet; the jump must land back on a legitimate floor beneath them.
+        if (this.jumpVelocity > 0.05 && hit.point.y > currentFeetY + 0.02) return false;
         return true;
       });
+      floorCandidates.sort((a, b) =>
+        Math.abs(a.point.y - currentFeetY) - Math.abs(b.point.y - currentFeetY)
+      );
+      const h = floorCandidates[0];
       if (h) return h.point.y;
 
       // Never teleport to an unrelated elevated surface when no nearby floor
