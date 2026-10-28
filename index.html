@@ -1901,9 +1901,13 @@
       modelRoot.scale.copy(origScale);
       modelRoot.updateMatrixWorld(true);
 
+      const normalizedNodeName = String(modelRoot.name || '').toLowerCase().replace(/[ _-]+/g, '');
+      const displayName = normalizedNodeName === 'ats' || normalizedNodeName === 'atspanel'
+        ? 'ATS Panel'
+        : (metadata.name || modelRoot.name || "Showroom Furnishing");
       const product = {
         id: metadata.id || modelRoot.uuid.substring(0, 8),
-        name: metadata.name || modelRoot.name || "Showroom Furnishing",
+        name: displayName,
         category: metadata.category || "Interior Item",
         description: metadata.description || "Specifications not available.",
         sku: metadata.sku || "",
@@ -2654,7 +2658,7 @@
         generatorbase: 'smgeneratorbase', 'قاعدةالمولد': 'smgeneratorbase',
         fueltank: 'smfueltank', 'خزانالوقود': 'smfueltank',
         dieselgenerator: 'smgenerator', 'مولدالديزل': 'smgenerator',
-        atspanel: 'smatspanel', 'لوحةالتحويلالأوتوماتيكي': 'smatspanel',
+        ats: 'smatspanel', atspanel: 'smatspanel', 'لوحةالتحويلالأوتوماتيكي': 'smatspanel',
         acdistributionboard: 'smelectricalbox', 'لوحةالتوزيعالكهربائي': 'smelectricalbox',
         circuitbreakers: 'smbreakers', 'القواطعالكهربائية': 'smbreakers',
         rectifiersystem: 'smrectifier', 'نظامالمقوم': 'smrectifier',
