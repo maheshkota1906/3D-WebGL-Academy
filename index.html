@@ -3989,13 +3989,14 @@
       }
       const doorwayPortal = lv.serverRoomPortal;
       if (doorwayPortal) {
-        const portalMargin = 0.9;
+        const portalMargin = 0.45;
         const nearPortal =
           px >= doorwayPortal.min.x - portalMargin && px <= doorwayPortal.max.x + portalMargin &&
           pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
         if (nearPortal) inAccess = true;
       }
-      if (inAccess) maxStepUp = 0.80;
+      // Allow a normal floor-height transition without a jump; do not use a roof-sized step.
+      if (inAccess) maxStepUp = 1.6;
 
       const maxStepDown = 3.0;
       const minY = currentFeetY - maxStepDown;
@@ -4008,12 +4009,17 @@
         return n.y >= 0.55;
       };
 
-      const h = hits.find((i) => {
+      const validFloorHits = hits.filter((i) => {
         if (!isFloorHit(i)) return false;
         if (i.point.y < minY || i.point.y > maxY) return false;
         if (i.point.y > currentFeetY + 0.35 && !inAccess) return false;
         return true;
       });
+      // Ray hits are ordered from above. At the doorway, choose the valid floor
+      // closest to the player's feet rather than snapping to the shelter roof.
+      const h = inAccess
+        ? validFloorHits.sort((a, b) => Math.abs(a.point.y - currentFeetY) - Math.abs(b.point.y - currentFeetY))[0]
+        : validFloorHits[0];
       if (h) return h.point.y;
 
       // Never teleport to an unrelated elevated surface when no nearby floor
