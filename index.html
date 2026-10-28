@@ -2544,68 +2544,66 @@
       p.modelRoot.traverse((o) => p.restPose.push({ o, p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() }));
     }
 
-    // Code-driven ATS door animation for the active GLB viewer.
+    // Animate ATS doors around their authored local pivots (door origins).
+    // The GLB's SM_Door_01 / SM_Door_02 transforms are left in place; no
+    // bounding-box pivot is created and no mesh is reparented.
     setupAtsDoorAnimation(productRoot) {
       this.clearAtsDoorAnimation();
       if (!productRoot) return;
 
-      const rootName = String(productRoot.name || '').toLowerCase().replace(/[ _-]+/g, '');
-      const productName = String((productRoot.userData.product || {}).name || '').toLowerCase().replace(/[ _-]+/g, '');
-      const allNodes = [];
-      productRoot.traverse((node) => allNodes.push(node));
-      const hasDoorMeshes = allNodes.some((node) => /^sm_door_0?[12]$/i.test(node.name || ''));
+      const compact = (name) => String(name || '').toLowerCase().replace(/[ _-]+/g, '');
+      const rootName = compact(productRoot.name);
+      const productName = compact((productRoot.userData.product || {}).name);
+      const nodes = [];
+      productRoot.traverse((node) => nodes.push(node));
+      const hasDoorMeshes = nodes.some((node) => /^sm_door_0?[12]$/i.test(node.name || ''));
 
-      if (!(rootName === 'ats' || /^ats0?1$/.test(rootName) || productName === 'ats' || productName === 'ats01' || hasDoorMeshes)) return;
+      if (!(rootName === 'ats' || /^ats0?1$/.test(rootName) ||
+            productName === 'ats' || productName === 'ats01' || hasDoorMeshes)) return;
 
-      const doorSpecs = [
-        { names: ['SM_Door_01', 'SM_Door_1'], direction: -1 },
-        { names: ['SM_Door_02', 'SM_Door_2'], direction: 1 }
+      const specs = [
+        { names: ['SM_Door_01', 'SM_Door_1'], angle: -Math.PI / 2 },
+        { names: ['SM_Door_02', 'SM_Door_2'], angle: Math.PI / 2 }
       ];
       this.atsDoorAnimation = [];
 
-      doorSpecs.forEach((spec) => {
-        const door = allNodes.find((node) => spec.names.some((name) => (node.name || '').trim().toLowerCase() === name.toLowerCase()));
-        if (!door || !door.parent) return;
-
-        door.updateWorldMatrix(true, false);
-        const bounds = new THREE.Box3().setFromObject(door);
-        if (bounds.isEmpty()) return;
-
-        const parent = door.parent;
-        parent.updateWorldMatrix(true, false);
-        const hingeWorld = new THREE.Vector3(
-          spec.direction < 0 ? bounds.min.x : bounds.max.x,
-          (bounds.min.y + bounds.max.y) * 0.5,
-          (bounds.min.z + bounds.max.z) * 0.5
+      specs.forEach((spec) => {
+        const door = nodes.find((node) =>
+          spec.names.some((name) => (node.name || '').trim().toLowerCase() === name.toLowerCase())
         );
-        const hingeLocal = parent.worldToLocal(hingeWorld.clone());
+        if (!door) {
+          console.warn('ATS animation: door mesh not found:', spec.names[0]);
+          return;
+        }
 
-        const pivot = new THREE.Group();
-        pivot.name = (door.name || 'ATS_Door') + '_CodeHinge';
-        parent.add(pivot);
-        pivot.position.copy(hingeLocal);
-        pivot.attach(door);
+        // The door object's own local origin is the hinge/pivot authored in the model.
+        // Rotate about its local Y axis, relative to its original closed quaternion.
+        const closedQuaternion = door.quaternion.clone();
+        const localHingeRotation = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 1, 0), spec.angle
+        );
+        const openQuaternion = closedQuaternion.clone().multiply(localHingeRotation);
 
         this.atsDoorAnimation.push({
-          pivot,
-          target: spec.direction * (Math.PI / 2),
-          direction: spec.direction
+          door,
+          closedQuaternion,
+          openQuaternion,
+          targetOpen: true
         });
       });
 
       if (this.atsDoorAnimation.length) {
-        console.info('ATS door animation active:', this.atsDoorAnimation.length, 'door(s)');
+        console.info('ATS local-pivot animation ready:', this.atsDoorAnimation.map((d) => d.door.name));
       }
     }
 
     updateAtsDoorAnimation(delta) {
       if (!this.atsDoorAnimation || !this.atsDoorAnimation.length) return;
-      this.atsDoorAnimation.forEach((door) => {
-        const current = door.pivot.rotation.y;
-        const difference = door.target - current;
-        const step = 2.2 * delta;
-        if (Math.abs(difference) <= step) door.pivot.rotation.y = door.target;
-        else door.pivot.rotation.y += Math.sign(difference) * step;
+      const blend = 1 - Math.exp(-7 * delta);
+      this.atsDoorAnimation.forEach((state) => {
+        const target = state.targetOpen ? state.openQuaternion : state.closedQuaternion;
+        state.door.quaternion.slerp(target, blend);
+        state.door.updateMatrix();
       });
     }
 
@@ -2614,12 +2612,10 @@
         this.atsDoorAnimation = [];
         return;
       }
-      this.atsDoorAnimation.forEach((doorState) => {
-        const pivot = doorState.pivot;
-        if (!pivot || !pivot.parent) return;
-        const door = pivot.children.find((child) => /^SM_Door_0?[12]$/i.test(child.name || ''));
-        if (door) pivot.parent.attach(door);
-        pivot.parent.remove(pivot);
+      // Restore each door's authored local rotation when leaving ATS inspection.
+      this.atsDoorAnimation.forEach((state) => {
+        state.door.quaternion.copy(state.closedQuaternion);
+        state.door.updateMatrix();
       });
       this.atsDoorAnimation = [];
     }
