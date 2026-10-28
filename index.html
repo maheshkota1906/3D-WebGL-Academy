@@ -4426,6 +4426,25 @@
     showPreview() {
       const root = this.selectedProduct && this.selectedProduct.modelRoot;
       if (!root) return;
+
+      // Large imported cabinet groups can contain thousands of meshes. Cloning
+      // the entire group synchronously for the thumbnail can freeze the main
+      // walkthrough. Keep the inspector responsive and skip only this preview
+      // for unusually large selections.
+      let previewMeshCount = 0;
+      root.traverse((o) => { if (o.isMesh) previewMeshCount++; });
+      if (previewMeshCount > 350) {
+        if (this.preview) this.preview.active = false;
+        const ui = this.ui;
+        if (ui && ui.slideshow) {
+          ui.slideshow.classList.remove('hidden');
+          ui.slideshow.classList.remove('preview-on');
+          ui.slideshow.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 text-sm text-center p-4">3D preview skipped for this large assembly. The scene remains interactive.</div>';
+        }
+        console.info('[Preview] Skipped expensive clone for large asset:', root.name, previewMeshCount, 'meshes');
+        return;
+      }
+
       if (!this.preview) this.initPreview();
       const P = this.preview, ui = this.ui;
       ui.slideshow.classList.remove('hidden'); ui.slideshow.classList.add('preview-on');
