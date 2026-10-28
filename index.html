@@ -4006,9 +4006,16 @@
       };
 
       const h = hits.find((i) => {
-        if (i.point.y < minY || i.point.y > maxY) return false;
         if (!isFloorHit(i)) return false;
-        if (i.point.y > currentFeetY + 0.35 && !inAccess) return false;
+        // At the doorway, choose the closest valid floor surface in the
+        // direction of travel, allowing automatic step-up/step-down without
+        // requiring a jump key. Outside the doorway retain the normal step limit.
+        if (inAccess) {
+          if (i.point.y < minY || i.point.y > maxY) return false;
+          return true;
+        }
+        if (i.point.y < minY || i.point.y > maxY) return false;
+        if (i.point.y > currentFeetY + 0.35) return false;
         return true;
       });
       if (h) return h.point.y;
