@@ -4858,32 +4858,26 @@
       );
       const openDoor = doorInteraction && doorInteraction.t > 0.82 ? doorInteraction.productDoorRoot : null;
 
-      // Restore the authored GameObject_(1) doorway passage, but only when
-      // Product_Door is fully open. Keep the bypass limited to this access mesh
-      // so adjacent wall meshes continue to block movement.
-      const access = this.currentLevel.serverRoomAccess;
-      if (openDoor && access) {
-        access.updateMatrixWorld(true);
-        const accessBox = new THREE.Box3().setFromObject(access);
-        if (!accessBox.isEmpty()) {
-          accessBox.expandByScalar(0.35);
-          const fromInside = from.x >= accessBox.min.x && from.x <= accessBox.max.x &&
-            from.z >= accessBox.min.z && from.z <= accessBox.max.z;
-          const targetInside = x >= accessBox.min.x && x <= accessBox.max.x &&
-            z >= accessBox.min.z && z <= accessBox.max.z;
-          let tMin = 0, tMax = 1;
-          const clipAxis = (p, d, min, max) => {
-            if (Math.abs(d) < 1e-8) return p >= min && p <= max;
-            let a = (min - p) / d, b = (max - p) / d;
-            if (a > b) { const t = a; a = b; b = t; }
-            tMin = Math.max(tMin, a);
-            tMax = Math.min(tMax, b);
-            return tMin <= tMax;
-          };
-          const crossesAccess = clipAxis(from.x, x - from.x, accessBox.min.x, accessBox.max.x) &&
-            clipAxis(from.z, z - from.z, accessBox.min.z, accessBox.max.z);
-          if (fromInside || targetInside || crossesAccess) return true;
-        }
+      // Permit movement through the actual doorway only while Product_Door
+      // is open. Do not bypass collisions across the whole room-access object.
+      const portal = this.currentLevel.serverRoomPortal;
+      if (openDoor && portal) {
+        const fromInside = from.x >= portal.min.x && from.x <= portal.max.x &&
+          from.z >= portal.min.z && from.z <= portal.max.z;
+        const targetInside = x >= portal.min.x && x <= portal.max.x &&
+          z >= portal.min.z && z <= portal.max.z;
+        let tMin = 0, tMax = 1;
+        const clipAxis = (p, d, min, max) => {
+          if (Math.abs(d) < 1e-8) return p >= min && p <= max;
+          let a = (min - p) / d, b = (max - p) / d;
+          if (a > b) { const t = a; a = b; b = t; }
+          tMin = Math.max(tMin, a);
+          tMax = Math.min(tMax, b);
+          return tMin <= tMax;
+        };
+        const crossesPortal = clipAxis(from.x, x - from.x, portal.min.x, portal.max.x) &&
+          clipAxis(from.z, z - from.z, portal.min.z, portal.max.z);
+        if (fromInside || targetInside || crossesPortal) return true;
       }
 
       const ray = this._collisionRay || (this._collisionRay = new THREE.Raycaster());
