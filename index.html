@@ -1509,7 +1509,7 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 0.58;
+      this.renderer.toneMappingExposure = 0.72;
       this.renderer.outputEncoding = THREE.sRGBEncoding; // correct colour: textures look as authored
       this.scene.environment = buildEnvTexture(this.renderer);
       this.loadEnvironmentHDRI();
@@ -1534,14 +1534,33 @@
     }
 
     loadEnvironmentHDRI() {
-      // Real outdoor industrial HDRI: visible sky/background plus image-based reflections.
-      // The procedural environment remains active until the HDR file finishes loading.
-      if (!THREE.RGBELoader) { console.warn('[HDRI] RGBELoader did not load; using fallback environment.'); return; }
+      // Always provide a visible outdoor sky first. This locally generated equirectangular
+      // gradient works even if the remote HDRI host is unavailable or blocked by CORS.
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024; canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        sky.addColorStop(0, '#6687a8');
+        sky.addColorStop(0.42, '#a9c1d2');
+        sky.addColorStop(0.62, '#e0ded5');
+        sky.addColorStop(1, '#b5b1a6');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const fallbackSky = new THREE.CanvasTexture(canvas);
+        fallbackSky.mapping = THREE.EquirectangularReflectionMapping;
+        fallbackSky.colorSpace = THREE.SRGBColorSpace || undefined;
+        this.scene.background = fallbackSky;
+        this.hdriFallbackBackground = fallbackSky;
+      } catch (e) {
+        this.scene.background = new THREE.Color(0x9eb5c8);
+      }
+
+      // Load the industrial HDRI for real environmental lighting and reflections.
+      if (!THREE.RGBELoader) { console.warn('[HDRI] RGBELoader did not load; keeping visible sky fallback.'); return; }
       const url = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/industrial_sunset_02_4k.hdr';
       new THREE.RGBELoader().load(url, (texture) => {
         if (!this.renderer || !this.scene) { texture.dispose(); return; }
         texture.mapping = THREE.EquirectangularReflectionMapping;
-        // RGBELoader in Three.js r128 configures the HDR texture encoding itself.
         this.hdriBackground = texture;
         this.scene.background = texture;
         try {
@@ -1561,10 +1580,10 @@
           });
           console.info('[HDRI] Industrial sunset environment loaded.');
         } catch (e) {
-          console.warn('[HDRI] Background loaded, but reflection setup failed:', e);
+          console.warn('[HDRI] HDR background loaded, but reflection setup failed:', e);
         }
       }, undefined, (error) => {
-        console.warn('[HDRI] Could not load the remote HDR image; using fallback environment.', error);
+        console.warn('[HDRI] Could not load remote HDRI; keeping local outdoor sky fallback.', error);
       });
     }
 
@@ -1576,11 +1595,11 @@
 
     setupLighting() {
       // Soft ambient light
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.24);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.38);
       this.scene.add(ambientLight); this.rig.amb = ambientLight;
 
       // Primary daylight sun
-      const sunLight = new THREE.DirectionalLight(0xfff8ee, 0.62);
+      const sunLight = new THREE.DirectionalLight(0xfff8ee, 0.85);
       sunLight.position.set(8, 14, 6);
       sunLight.castShadow = true;
       sunLight.shadow.mapSize.set(2048, 2048);
@@ -1596,7 +1615,7 @@
       this.scene.add(sunLight); this.rig.sun = sunLight;
 
       // Soft architectural warm fill (replaces colored artificial lighting)
-      const architecturalFill = new THREE.PointLight(0xfff7ed, 0.12, 16);
+      const architecturalFill = new THREE.PointLight(0xfff7ed, 0.18, 16);
       architecturalFill.position.set(-3, 3.2, -2);
       this.scene.add(architecturalFill); this.rig.fill = architecturalFill;
 
