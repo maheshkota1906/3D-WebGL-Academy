@@ -4800,43 +4800,8 @@
       const meshes = this.currentLevel.meshColliders || [];
       const from = this.camera.position;
 
-      // Server-room doorway portal: derive it from Product_Door itself.
-      // The complete movement segment is tested so the player cannot be
-      // stopped by a thin wall immediately before/after the opening.
-      const portal = this.currentLevel.serverRoomPortal;
-      if (portal) {
-        const segmentHitsBox = (x1, z1, x2, z2, box) => {
-          const dx = x2 - x1;
-          const dz = z2 - z1;
-          let tMin = 0;
-          let tMax = 1;
-
-          const slab = (p, d, min, max) => {
-            if (Math.abs(d) < 1e-8) return p >= min && p <= max;
-            let a = (min - p) / d;
-            let b = (max - p) / d;
-            if (a > b) { const t = a; a = b; b = t; }
-            tMin = Math.max(tMin, a);
-            tMax = Math.min(tMax, b);
-            return tMin <= tMax;
-          };
-
-          return slab(x1, dx, box.min.x, box.max.x) &&
-                 slab(z1, dz, box.min.z, box.max.z);
-        };
-
-        const currentInside =
-          from.x >= portal.min.x && from.x <= portal.max.x &&
-          from.z >= portal.min.z && from.z <= portal.max.z;
-        const targetInside =
-          x >= portal.min.x && x <= portal.max.x &&
-          z >= portal.min.z && z <= portal.max.z;
-
-        if (currentInside || targetInside ||
-            segmentHitsBox(from.x, from.z, x, z, portal)) {
-          return true;
-        }
-      }
+      // Doorway passage is governed by the real mesh colliders below.
+      // Do not bypass collision checks just because movement crosses the door area.
 
       /* v39 temporary doorway bypass removed in v33 restore.
       // Preserve the v33 authored doorway access through GameObject_(1).
