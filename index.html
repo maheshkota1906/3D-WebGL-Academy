@@ -1979,7 +1979,7 @@
         const doorBox = new THREE.Box3().setFromObject(productDoorRoot);
         const doorCenter = doorBox.getCenter(new THREE.Vector3());
         const doorSize = doorBox.getSize(new THREE.Vector3());
-        const portalPad = 0.75;
+        const portalPad = 0.12;
         level.serverRoomPortal = new THREE.Box3(
           new THREE.Vector3(
             doorBox.min.x - portalPad,
@@ -3996,7 +3996,7 @@
       const floorCandidates = hits.filter((hit) => {
         if (!isFloorHit(hit)) return false;
         if (hit.point.y < minY || hit.point.y > maxY) return false;
-        const stepUpLimit = inAccess ? 0.55 : 0.35;
+        const stepUpLimit = inAccess ? maxStepUp : 0.35;
         if (hit.point.y > currentFeetY + stepUpLimit) return false;
         // If the player is airborne, do not snap onto a surface above the
         // feet; the jump must land back on a legitimate floor beneath them.
