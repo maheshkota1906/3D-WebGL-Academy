@@ -2551,7 +2551,8 @@
       this.clearAtsDoorAnimation();
       if (!productRoot) return;
 
-      const compact = (name) => String(name || '').toLowerCase().replace(/[ _-]+/g, '');
+      // Normalize labels such as ATS, ATS_(1), ATS_01 and ATS (1).
+      const compact = (name) => String(name || '').toLowerCase().replace(/[ _()\-]+/g, '');
       const rootName = compact(productRoot.name);
       const productName = compact((productRoot.userData.product || {}).name);
       const nodes = [];
