@@ -2098,7 +2098,8 @@
       const base = new URL(cfgUrl, location.href);
       cfg._base = base.href;
       const glbUrl = new URL(cfg.glb, base).href;
-      const res = await fetch(glbUrl);
+      // Prefer the browser cache for repeat visits; this does not change the asset URL.
+      const res = await fetch(glbUrl, { cache: 'force-cache' });
       if (!res.ok) throw new Error(`Could not load ${cfg.glb} (${res.status})`);
       const total = +res.headers.get('content-length') || 0;
       const bar = document.getElementById('loading-bar'), wrap = document.getElementById('loading-bar-wrap');
@@ -2106,11 +2107,25 @@
       if (res.body && total) {
         wrap.classList.remove('hidden');
         const rd = res.body.getReader(), parts = []; let got = 0;
-        for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length; this.welcomeProgress(got / total); bar.style.width = Math.min(100, got / total * 100) + '%'; }
-        const u = new Uint8Array(got); let o = 0; parts.forEach((p) => { u.set(p, o); o += p.length; }); buf = u.buffer;
+        for (;;) {
+          const { done, value } = await rd.read();
+          if (done) break;
+          parts.push(value); got += value.length;
+          this.welcomeProgress(got / total);
+          if (bar) bar.style.width = Math.min(94, got / total * 94) + '%';
+        }
+        const u = new Uint8Array(got); let o = 0;
+        parts.forEach((p) => { u.set(p, o); o += p.length; });
+        buf = u.buffer;
       } else buf = await res.arrayBuffer();
-      wrap.classList.add('hidden');
+
+      // Keep the loading UI visible during GLTF parsing and texture decoding too.
+      this.showLoading('Preparing 3D Environment', 'Building equipment, materials and textures...');
+      if (bar) bar.style.width = '96%';
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       await this.parseAndSetup(buf, new URL('.', glbUrl).href, cfg, String(cfg.glb).split('/').pop());
+      if (bar) bar.style.width = '100%';
+      wrap.classList.add('hidden');
     }
 
     hasMesh(node) {
