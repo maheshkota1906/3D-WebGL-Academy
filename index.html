@@ -3995,8 +3995,10 @@
           pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
         if (nearPortal) inAccess = true;
       }
-      // Allow a normal floor-height transition without a jump; do not use a roof-sized step.
-      if (inAccess) maxStepUp = 1.6;
+      // Doorway threshold may be higher than a normal stair. Permit automatic
+      // floor snapping only inside the narrow access/portal zone; select the
+      // floor closest to the player's feet below, so this does not snap to a roof.
+      if (inAccess) maxStepUp = 2.4;
 
       const maxStepDown = 3.0;
       const minY = currentFeetY - maxStepDown;
