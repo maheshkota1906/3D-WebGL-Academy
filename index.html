@@ -1509,7 +1509,7 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 0.82;
+      this.renderer.toneMappingExposure = 0.58;
       this.renderer.outputEncoding = THREE.sRGBEncoding; // correct colour: textures look as authored
       this.scene.environment = buildEnvTexture(this.renderer);
       this.loadEnvironmentHDRI();
@@ -1576,11 +1576,11 @@
 
     setupLighting() {
       // Soft ambient light
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.48);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.24);
       this.scene.add(ambientLight); this.rig.amb = ambientLight;
 
       // Primary daylight sun
-      const sunLight = new THREE.DirectionalLight(0xfff8ee, 1.05);
+      const sunLight = new THREE.DirectionalLight(0xfff8ee, 0.62);
       sunLight.position.set(8, 14, 6);
       sunLight.castShadow = true;
       sunLight.shadow.mapSize.set(2048, 2048);
@@ -1596,7 +1596,7 @@
       this.scene.add(sunLight); this.rig.sun = sunLight;
 
       // Soft architectural warm fill (replaces colored artificial lighting)
-      const architecturalFill = new THREE.PointLight(0xfff7ed, 0.28, 16);
+      const architecturalFill = new THREE.PointLight(0xfff7ed, 0.12, 16);
       architecturalFill.position.set(-3, 3.2, -2);
       this.scene.add(architecturalFill); this.rig.fill = architecturalFill;
 
