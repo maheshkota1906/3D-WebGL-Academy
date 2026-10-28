@@ -4682,8 +4682,39 @@
       const floorY = lv ? this.groundY(currentPos.x, currentPos.z, currentPos.y + 0.75) : 0;
       const groundCameraY = floorY + eye;
       if (!this.isGrounded || this.jumpVelocity > 0) {
+        const previousY = currentPos.y;
         this.jumpVelocity -= 14.5 * delta;
         currentPos.y += this.jumpVelocity * delta;
+
+        // Solid overhead collision for jumps. Use world-space mesh bounds so
+        // even thin, single-sided roof meshes block the player from jumping
+        // through the shelter and then landing on its top.
+        if (currentPos.y > previousY && lv && lv.meshColliders) {
+          const headOffset = 0.12;
+          const oldHeadY = previousY + headOffset;
+          const newHeadY = currentPos.y + headOffset;
+          let ceilingY = Infinity;
+          const playerX = currentPos.x, playerZ = currentPos.z;
+          for (const mesh of lv.meshColliders) {
+            if (!mesh.visible || mesh.userData.isOutline || mesh.userData.isPreview ||
+                mesh.userData.isServerRoomAccess || mesh.userData.isWalkablePlatform ||
+                mesh.userData.isProductDoorMesh) continue;
+            mesh.updateWorldMatrix(true, false);
+            const bounds = new THREE.Box3().setFromObject(mesh);
+            if (playerX < bounds.min.x - APP_CONFIG.playerRadius ||
+                playerX > bounds.max.x + APP_CONFIG.playerRadius ||
+                playerZ < bounds.min.z - APP_CONFIG.playerRadius ||
+                playerZ > bounds.max.z + APP_CONFIG.playerRadius) continue;
+            if (bounds.min.y >= oldHeadY - 0.03 && bounds.min.y <= newHeadY + 0.03) {
+              ceilingY = Math.min(ceilingY, bounds.min.y);
+            }
+          }
+          if (ceilingY < Infinity) {
+            currentPos.y = Math.min(currentPos.y, ceilingY - headOffset - 0.02);
+            this.jumpVelocity = 0;
+          }
+        }
+
         if (currentPos.y <= groundCameraY) {
           currentPos.y = groundCameraY + bob;
           this.jumpVelocity = 0;
@@ -4862,33 +4893,9 @@
       );
       const openDoor = doorInteraction && doorInteraction.t > 0.82 ? doorInteraction.productDoorRoot : null;
 
-      // Restore the authored GameObject_(1) doorway passage, but only when
-      // Product_Door is fully open. Keep the bypass limited to this access mesh
-      // so adjacent wall meshes continue to block movement.
-      const access = this.currentLevel.serverRoomAccess;
-      if (openDoor && access) {
-        access.updateMatrixWorld(true);
-        const accessBox = new THREE.Box3().setFromObject(access);
-        if (!accessBox.isEmpty()) {
-          accessBox.expandByScalar(0.35);
-          const fromInside = from.x >= accessBox.min.x && from.x <= accessBox.max.x &&
-            from.z >= accessBox.min.z && from.z <= accessBox.max.z;
-          const targetInside = x >= accessBox.min.x && x <= accessBox.max.x &&
-            z >= accessBox.min.z && z <= accessBox.max.z;
-          let tMin = 0, tMax = 1;
-          const clipAxis = (p, d, min, max) => {
-            if (Math.abs(d) < 1e-8) return p >= min && p <= max;
-            let a = (min - p) / d, b = (max - p) / d;
-            if (a > b) { const t = a; a = b; b = t; }
-            tMin = Math.max(tMin, a);
-            tMax = Math.min(tMax, b);
-            return tMin <= tMax;
-          };
-          const crossesAccess = clipAxis(from.x, x - from.x, accessBox.min.x, accessBox.max.x) &&
-            clipAxis(from.z, z - from.z, accessBox.min.z, accessBox.max.z);
-          if (fromInside || targetInside || crossesAccess) return true;
-        }
-      }
+      // Do not bypass collision for the full GameObject_(1) bounds: that
+      // bounding box overlaps shelter walls. Door passage must be resolved by
+      // the real mesh colliders and the narrow door-leaf exception below.
 
       const ray = this._collisionRay || (this._collisionRay = new THREE.Raycaster());
       const footprint = Math.max(0.01, APP_CONFIG.playerRadius);
