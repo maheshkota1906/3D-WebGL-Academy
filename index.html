@@ -1979,7 +1979,7 @@
         const doorBox = new THREE.Box3().setFromObject(productDoorRoot);
         const doorCenter = doorBox.getCenter(new THREE.Vector3());
         const doorSize = doorBox.getSize(new THREE.Vector3());
-        const portalPad = 0.12;
+        const portalPad = 0.75;
         level.serverRoomPortal = new THREE.Box3(
           new THREE.Vector3(
             doorBox.min.x - portalPad,
