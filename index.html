@@ -4694,8 +4694,32 @@
       const floorY = lv ? this.groundY(currentPos.x, currentPos.z, currentPos.y + 0.75) : 0;
       const groundCameraY = floorY + eye;
       if (!this.isGrounded || this.jumpVelocity > 0) {
+        const previousCameraY = currentPos.y;
         this.jumpVelocity -= 14.5 * delta;
         currentPos.y += this.jumpVelocity * delta;
+
+        // Vertical head collision: stop a jump when the player's head reaches
+        // the underside of a roof/ceiling. Without this, the camera can pass
+        // through the shelter roof and groundY then treats the roof as a floor.
+        if (currentPos.y > previousCameraY && lv && lv.rootGroup) {
+          const ceilingRay = this._ceilingRay || (this._ceilingRay = new THREE.Raycaster());
+          ceilingRay.set(
+            new THREE.Vector3(currentPos.x, previousCameraY, currentPos.z),
+            new THREE.Vector3(0, 1, 0)
+          );
+          ceilingRay.near = 0.02;
+          ceilingRay.far = currentPos.y - previousCameraY + 0.08;
+          const ceilingHit = ceilingRay.intersectObjects(lv.rootGroup.children, true).find((hit) => {
+            const o = hit.object;
+            return o.visible && !o.userData.isOutline && !o.userData.isPreview &&
+              !o.userData.isServerRoomAccess && !o.userData.isWalkablePlatform;
+          });
+          if (ceilingHit) {
+            currentPos.y = Math.max(previousCameraY, ceilingHit.point.y - 0.08);
+            this.jumpVelocity = 0;
+          }
+        }
+
         if (currentPos.y <= groundCameraY) {
           currentPos.y = groundCameraY + bob;
           this.jumpVelocity = 0;
