@@ -2089,8 +2089,16 @@
         cfg._auto = true;
         await this.loadFromConfig(cfg, url);
       } catch (err) {
-        console.error('walkthrough.json failed:', err);
-        this.hideLoading();
+        console.error('[Walkthrough] Scene load failed:', err);
+        const title = document.getElementById('loading-title');
+        const subtitle = document.getElementById('loading-subtitle');
+        if (title) title.textContent = 'Unable to load 3D scene';
+        if (subtitle) subtitle.textContent = (err && err.message) ? err.message : 'Check the GLB file and refresh the page.';
+        const bar = document.getElementById('loading-bar');
+        if (bar) bar.style.width = '100%';
+        // Leave a useful error visible instead of an endless generic loading screen.
+        this.welcomeReady(true);
+        setTimeout(() => this.hideLoading(), 7000);
       }
     }
 
@@ -2119,13 +2127,15 @@
         buf = u.buffer;
       } else buf = await res.arrayBuffer();
 
-      // Keep the loading UI visible during GLTF parsing and texture decoding too.
-      this.showLoading('Preparing 3D Environment', 'Building equipment, materials and textures...');
+      // Keep the loading UI informative during GLTF parsing and scene setup.
+      this.showLoading('Preparing 3D Environment', 'Parsing model and preparing equipment...');
       if (bar) bar.style.width = '96%';
+      console.info('[Walkthrough] GLB downloaded; beginning parse:', cfg.glb, buf.byteLength, 'bytes');
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       await this.parseAndSetup(buf, new URL('.', glbUrl).href, cfg, String(cfg.glb).split('/').pop());
       if (bar) bar.style.width = '100%';
       wrap.classList.add('hidden');
+      console.info('[Walkthrough] GLB parsed and scene setup completed.');
     }
 
     hasMesh(node) {
