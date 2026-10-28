@@ -3909,7 +3909,10 @@
       const px = x === null ? c.x : x;
       const pz = z === null ? c.z : z;
       const currentFeetY = c.y - lv.eyeHeight;
-      const top = startY === null ? c.y + 0.75 : startY;
+      // Cast from above the doorway's raised floor. Starting just above the
+      // camera misses a higher floor entirely when its surface is above the ray origin,
+      // which is why the player previously had to jump before floor snapping worked.
+      const top = Math.max(startY === null ? c.y + 0.75 : startY, c.y + 4.0);
 
       const r = this._gr || (this._gr = new THREE.Raycaster());
       r.set(new THREE.Vector3(px, top, pz), new THREE.Vector3(0, -1, 0));
@@ -3992,9 +3995,9 @@
           pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
         if (nearPortal) inAccess = true;
       }
-      if (inAccess) maxStepUp = 1.60;
+      if (inAccess) maxStepUp = 3.0;
 
-      const maxStepDown = 3.0;
+      const maxStepDown = inAccess ? 4.0 : 3.0;
       const minY = currentFeetY - maxStepDown;
       const maxY = currentFeetY + maxStepUp;
 
