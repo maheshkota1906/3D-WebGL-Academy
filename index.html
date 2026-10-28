@@ -1981,7 +1981,7 @@
         const doorBox = new THREE.Box3().setFromObject(productDoorRoot);
         const doorCenter = doorBox.getCenter(new THREE.Vector3());
         const doorSize = doorBox.getSize(new THREE.Vector3());
-        const portalPad = 0.75;
+        const portalPad = 0.12;
         level.serverRoomPortal = new THREE.Box3(
           new THREE.Vector3(
             doorBox.min.x - portalPad,
@@ -4843,6 +4843,31 @@
         (it) => it.kind === 'hinge' && it.isProductDoor && it.pivot
       );
       const openDoor = doorInteraction && doorInteraction.t > 0.82 ? doorInteraction.productDoorRoot : null;
+
+      // Permit passage through the narrow doorway only after the hinged door is open.
+      // Keep this exception tightly aligned to the actual door footprint so it does
+      // not disable collision against adjacent wall sections.
+      const portal = this.currentLevel.serverRoomPortal;
+      if (openDoor && portal) {
+        const fromInside = from.x >= portal.min.x && from.x <= portal.max.x &&
+          from.z >= portal.min.z && from.z <= portal.max.z;
+        const targetInside = x >= portal.min.x && x <= portal.max.x &&
+          z >= portal.min.z && z <= portal.max.z;
+        const sx = x - from.x, sz = z - from.z;
+        let tMin = 0, tMax = 1;
+        const clipPortalAxis = (p, d, min, max) => {
+          if (Math.abs(d) < 1e-8) return p >= min && p <= max;
+          let a = (min - p) / d, b = (max - p) / d;
+          if (a > b) { const t = a; a = b; b = t; }
+          tMin = Math.max(tMin, a);
+          tMax = Math.min(tMax, b);
+          return tMin <= tMax;
+        };
+        const crossesPortal =
+          clipPortalAxis(from.x, sx, portal.min.x, portal.max.x) &&
+          clipPortalAxis(from.z, sz, portal.min.z, portal.max.z);
+        if (fromInside || targetInside || crossesPortal) return true;
+      }
 
       const ray = this._collisionRay || (this._collisionRay = new THREE.Raycaster());
       const footprint = Math.max(0.01, APP_CONFIG.playerRadius);
