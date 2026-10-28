@@ -4435,13 +4435,13 @@
         || /^(ats panel|battery bank|rectifier system)$/i.test(String(this.selectedProduct.name || ''));
       let previewMeshCount = 0;
       root.traverse((o) => { if (o.isMesh) previewMeshCount++; });
-      if (isPowerCabinet || previewMeshCount > 120) {
+      if (isPowerCabinet || previewMeshCount > 350) {
         if (this.preview) this.preview.active = false;
         const ui = this.ui;
         if (ui && ui.slideshow) {
           ui.slideshow.classList.remove('hidden');
           ui.slideshow.classList.remove('preview-on');
-          ui.slideshow.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 text-sm text-center p-4">3D preview disabled for this equipment to keep the walkthrough responsive.</div>';
+          ui.slideshow.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 text-sm text-center p-4">3D preview skipped for this very large assembly to keep the walkthrough responsive.</div>';
         }
         console.info('[Preview] Skipped expensive clone for large asset:', root.name, previewMeshCount, 'meshes');
         return;
