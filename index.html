@@ -3977,11 +3977,22 @@
       if (access && access.visible) {
         access.updateMatrixWorld(true);
         const accessBox = new THREE.Box3().setFromObject(access);
+        // Use a wider transition zone around the authored doorway so the
+        // player is already eligible for automatic floor-height adjustment
+        // before crossing the threshold in either direction.
         inAccess =
-          px >= accessBox.min.x - 0.45 && px <= accessBox.max.x + 0.45 &&
-          pz >= accessBox.min.z - 0.45 && pz <= accessBox.max.z + 0.45;
-        if (inAccess) maxStepUp = 1.60;
+          px >= accessBox.min.x - 1.0 && px <= accessBox.max.x + 1.0 &&
+          pz >= accessBox.min.z - 1.0 && pz <= accessBox.max.z + 1.0;
       }
+      const doorwayPortal = lv.serverRoomPortal;
+      if (doorwayPortal) {
+        const portalMargin = 0.9;
+        const nearPortal =
+          px >= doorwayPortal.min.x - portalMargin && px <= doorwayPortal.max.x + portalMargin &&
+          pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
+        if (nearPortal) inAccess = true;
+      }
+      if (inAccess) maxStepUp = 1.60;
 
       const maxStepDown = 3.0;
       const minY = currentFeetY - maxStepDown;
