@@ -5206,10 +5206,26 @@
     render();
   };
 
-  // Boot Application
+  // Boot Application. An optional training widget must never prevent the 3D walkthrough from starting.
   window.addEventListener('DOMContentLoaded', () => {
-    initGuidedClimb();
-    window.app = new WalkthroughApp();
+    try {
+      initGuidedClimb();
+    } catch (err) {
+      console.error('[GuidedClimb] Optional guided-climb UI failed to initialize:', err);
+    }
+    try {
+      window.app = new WalkthroughApp();
+    } catch (err) {
+      console.error('[Walkthrough] Application startup failed:', err);
+      const button = document.getElementById('sp-enter');
+      const title = document.getElementById('sp-title');
+      const subtitle = document.getElementById('sp-msg');
+      const cta = document.getElementById('sp-cta');
+      if (title) title.textContent = '3D Walkthrough could not start';
+      if (subtitle) subtitle.textContent = 'The application encountered a startup error. Refresh the page after the latest deployment; details are available in the browser console.';
+      if (cta) cta.textContent = 'Startup error — refresh page';
+      if (button) button.disabled = true;
+    }
   });
   </script>
 </body>
