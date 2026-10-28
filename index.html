@@ -2572,6 +2572,7 @@
         { names: ['SM_Door_02', 'SM_Door_2'], angle: -Math.PI / 2 }
       ];
       this.atsDoorAnimation = [];
+      this.atsDoorAnimationWaitingForFocus = !!this.cameraAnim?.active;
 
       specs.forEach((spec) => {
         const door = nodes.find((node) =>
@@ -2599,6 +2600,11 @@
       });
 
       if (this.atsDoorAnimation.length) {
+        // If no camera travel is in progress, start the doors immediately.
+        // Otherwise the render loop opens them when the current camera travel ends.
+        if (!this.atsDoorAnimationWaitingForFocus) {
+          this.atsDoorAnimation.forEach((doorState) => { doorState.targetOpen = true; });
+        }
         console.info('ATS local-pivot animation ready:', this.atsDoorAnimation.map((d) => d.door.name));
       }
     }
@@ -4578,9 +4584,10 @@
           this.setLook(this.camera.rotation.y, this.camera.rotation.x);
 
           // Start opening ATS doors only after the camera has arrived at the selected asset.
-          if (this.currentState === AppState.INSPECT && this.selectedProduct &&
-              this.selectedProduct.modelRoot.userData.isAtsCabinet && this.atsDoorAnimation) {
+          if (this.atsDoorAnimation && this.atsDoorAnimation.length &&
+              this.atsDoorAnimationWaitingForFocus) {
             this.atsDoorAnimation.forEach((doorState) => { doorState.targetOpen = true; });
+            this.atsDoorAnimationWaitingForFocus = false;
           }
         }
       }
