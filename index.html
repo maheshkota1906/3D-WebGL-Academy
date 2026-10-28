@@ -4792,10 +4792,45 @@
     isValidPosition(x, z) {
       if (!this.currentLevel) return true;
 
-      // 1. Keep the existing outer room boundary.
+      // 1. Keep the outer boundary, but don't let it seal the server-room doorway.
+      // The attached room can extend beyond the main roomBounds; allow a boundary
+      // crossing only when the door is open and the move is inside the doorway/access zone.
       const bounds = this.currentLevel.roomBounds;
-      if (x < bounds.min.x || x > bounds.max.x || z < bounds.min.z || z > bounds.max.z) {
-        return false;
+      const outsideRoomBounds = x < bounds.min.x || x > bounds.max.x || z < bounds.min.z || z > bounds.max.z;
+      if (outsideRoomBounds) {
+        const earlyDoor = (this.currentLevel.interactives || []).find(
+          (it) => it.kind === 'hinge' && it.isProductDoor && it.pivot
+        );
+        const earlyOpenDoor = earlyDoor && earlyDoor.t > 0.82;
+        const earlyPortal = this.currentLevel.serverRoomPortal;
+        const earlyAccess = this.currentLevel.serverRoomAccess;
+        let allowedDoorwayCrossing = false;
+        if (earlyOpenDoor) {
+          const from = this.camera.position;
+          const crossesBox = (box) => {
+            if (!box || box.isEmpty()) return false;
+            const inside = (px, pz) => px >= box.min.x && px <= box.max.x && pz >= box.min.z && pz <= box.max.z;
+            if (inside(from.x, from.z) || inside(x, z)) return true;
+            let t0 = 0, t1 = 1;
+            const clip = (p, d, mn, mx) => {
+              if (Math.abs(d) < 1e-8) return p >= mn && p <= mx;
+              let a = (mn - p) / d, b = (mx - p) / d;
+              if (a > b) { const q = a; a = b; b = q; }
+              t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+              return t0 <= t1;
+            };
+            return clip(from.x, x - from.x, box.min.x, box.max.x) &&
+              clip(from.z, z - from.z, box.min.z, box.max.z);
+          };
+          if (earlyPortal && crossesBox(earlyPortal)) allowedDoorwayCrossing = true;
+          if (!allowedDoorwayCrossing && earlyAccess) {
+            earlyAccess.updateMatrixWorld(true);
+            const accessBox = new THREE.Box3().setFromObject(earlyAccess);
+            accessBox.expandByScalar(0.65);
+            if (crossesBox(accessBox)) allowedDoorwayCrossing = true;
+          }
+        }
+        if (!allowedDoorwayCrossing) return false;
       }
 
       // 2. Tower-top safety boundary. While the player is at ladder/platform
