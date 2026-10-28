@@ -3969,6 +3969,35 @@
       }
       if (platformFloor !== null) return platformFloor;
 
+      // GameObject_(1) is the authored entrance landing the user must be able
+      // to step onto. Resolve its upward-facing mesh surface explicitly as a
+      // walkable floor; it is ignored by horizontal body collision below.
+      const accessLanding = lv.serverRoomAccess;
+      if (accessLanding && accessLanding.visible) {
+        accessLanding.updateMatrixWorld(true);
+        const ab = new THREE.Box3().setFromObject(accessLanding);
+        const insideLanding =
+          px >= ab.min.x - 0.18 && px <= ab.max.x + 0.18 &&
+          pz >= ab.min.z - 0.18 && pz <= ab.max.z + 0.18;
+        if (insideLanding) {
+          const ar = new THREE.Raycaster(
+            new THREE.Vector3(px, Math.max(top, ab.max.y + 0.25), pz),
+            new THREE.Vector3(0, -1, 0), 0, Math.max(4, ab.max.y - ab.min.y + 4)
+          );
+          const landingHits = ar.intersectObject(accessLanding, true).filter((hit) => {
+            if (!hit.object.visible || hit.object.userData.isOutline || hit.object.userData.isPreview) return false;
+            if (!hit.face) return true;
+            const normal = hit.face.normal.clone();
+            normal.applyMatrix3(new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld)).normalize();
+            return normal.y >= 0.55;
+          });
+          const landingFloor = landingHits
+            .filter((hit) => hit.point.y >= currentFeetY - 3.0 && hit.point.y <= currentFeetY + 2.4)
+            .sort((a, b) => Math.abs(a.point.y - currentFeetY) - Math.abs(b.point.y - currentFeetY))[0];
+          if (landingFloor) return landingFloor.point.y;
+        }
+      }
+
       // The server-room entrance has a real floor-height transition.
       // Allow the authored doorway to resolve that transition instead of
       // leaving the player suspended at the outside-floor height.
