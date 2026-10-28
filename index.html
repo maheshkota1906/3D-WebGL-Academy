@@ -3912,7 +3912,7 @@
       // Cast from above the doorway's raised floor. Starting just above the
       // camera misses a higher floor entirely when its surface is above the ray origin,
       // which is why the player previously had to jump before floor snapping worked.
-      const top = Math.max(startY === null ? c.y + 0.75 : startY, c.y + 4.0);
+      const top = startY === null ? c.y + 0.75 : startY;
 
       const r = this._gr || (this._gr = new THREE.Raycaster());
       r.set(new THREE.Vector3(px, top, pz), new THREE.Vector3(0, -1, 0));
@@ -3984,8 +3984,8 @@
         // player is already eligible for automatic floor-height adjustment
         // before crossing the threshold in either direction.
         inAccess =
-          px >= accessBox.min.x - 1.0 && px <= accessBox.max.x + 1.0 &&
-          pz >= accessBox.min.z - 1.0 && pz <= accessBox.max.z + 1.0;
+          px >= accessBox.min.x - 0.45 && px <= accessBox.max.x + 0.45 &&
+          pz >= accessBox.min.z - 0.45 && pz <= accessBox.max.z + 0.45;
       }
       const doorwayPortal = lv.serverRoomPortal;
       if (doorwayPortal) {
@@ -3995,9 +3995,9 @@
           pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
         if (nearPortal) inAccess = true;
       }
-      if (inAccess) maxStepUp = 3.0;
+      if (inAccess) maxStepUp = 0.80;
 
-      const maxStepDown = inAccess ? 4.0 : 3.0;
+      const maxStepDown = 3.0;
       const minY = currentFeetY - maxStepDown;
       const maxY = currentFeetY + maxStepUp;
 
@@ -4010,15 +4010,8 @@
 
       const h = hits.find((i) => {
         if (!isFloorHit(i)) return false;
-        // At the doorway, choose the closest valid floor surface in the
-        // direction of travel, allowing automatic step-up/step-down without
-        // requiring a jump key. Outside the doorway retain the normal step limit.
-        if (inAccess) {
-          if (i.point.y < minY || i.point.y > maxY) return false;
-          return true;
-        }
         if (i.point.y < minY || i.point.y > maxY) return false;
-        if (i.point.y > currentFeetY + 0.35) return false;
+        if (i.point.y > currentFeetY + 0.35 && !inAccess) return false;
         return true;
       });
       if (h) return h.point.y;
