@@ -2594,7 +2594,7 @@
           door,
           closedQuaternion,
           openQuaternion,
-          targetOpen: true
+          targetOpen: false
         });
       });
 
@@ -4576,6 +4576,12 @@
         if (t >= 1.0) {
           this.cameraAnim.active = false;
           this.setLook(this.camera.rotation.y, this.camera.rotation.x);
+
+          // Start opening ATS doors only after the camera has arrived at the selected asset.
+          if (this.currentState === AppState.INSPECT && this.selectedProduct &&
+              this.selectedProduct.modelRoot.userData.isAtsCabinet && this.atsDoorAnimation) {
+            this.atsDoorAnimation.forEach((doorState) => { doorState.targetOpen = true; });
+          }
         }
       }
 
