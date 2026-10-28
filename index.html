@@ -1981,7 +1981,7 @@
         const doorBox = new THREE.Box3().setFromObject(productDoorRoot);
         const doorCenter = doorBox.getCenter(new THREE.Vector3());
         const doorSize = doorBox.getSize(new THREE.Vector3());
-        const portalPad = 0.12;
+        const portalPad = 0.45;
         level.serverRoomPortal = new THREE.Box3(
           new THREE.Vector3(
             doorBox.min.x - portalPad,
@@ -3989,7 +3989,7 @@
       }
       const doorwayPortal = lv.serverRoomPortal;
       if (doorwayPortal) {
-        const portalMargin = 0.45;
+        const portalMargin = 0.9;
         const nearPortal =
           px >= doorwayPortal.min.x - portalMargin && px <= doorwayPortal.max.x + portalMargin &&
           pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
