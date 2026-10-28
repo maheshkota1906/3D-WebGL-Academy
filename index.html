@@ -5221,9 +5221,9 @@
       const title = document.getElementById('sp-title');
       const subtitle = document.getElementById('sp-msg');
       const cta = document.getElementById('sp-cta');
-      if (title) title.textContent = '3D Walkthrough could not start';
-      if (subtitle) subtitle.textContent = 'The application encountered a startup error. Refresh the page after the latest deployment; details are available in the browser console.';
-      if (cta) cta.textContent = 'Startup error — refresh page';
+      if (title) title.textContent = '3D Walkthrough startup error';
+      if (subtitle) subtitle.textContent = 'Error: ' + ((err && err.message) ? err.message : String(err)) + ' — refresh after the fix is deployed.';
+      if (cta) cta.textContent = 'Startup error detected';
       if (button) button.disabled = true;
     }
   });
