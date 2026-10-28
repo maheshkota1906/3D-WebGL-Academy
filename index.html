@@ -802,6 +802,7 @@
       this.synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
       this.currentUtterance = null;
       this.audioEl = null;
+      this._speakTimer = null;
       this.defaultLang = '';   // empty = use the device's own default voice (exactly as before)
       this.statusCard = document.getElementById('narration-status-card');
       this.textDisplay = document.getElementById('narration-text-display');
@@ -929,10 +930,21 @@
       u.rate = st.ttsRate || 1; u.pitch = st.ttsPitch || 1; u.volume = 1;
       u.onstart = () => this._status(true, text);
       u.onend = u.onerror = () => this._status(false);
-      this.synth.speak(u);
+
+      // Chromium can clip the first word when speak() follows cancel() in the
+      // same task. Start after a short gap and explicitly resume the speech queue.
+      const synth = this.synth;
+      this._speakTimer = setTimeout(() => {
+        this._speakTimer = null;
+        if (this.currentUtterance !== u || !this.enabled && !opts.force) return;
+        synth.speak(u);
+        if (typeof synth.resume === 'function') synth.resume();
+      }, 140);
     }
 
     stop() {
+      if (this._speakTimer) { clearTimeout(this._speakTimer); this._speakTimer = null; }
+      this.currentUtterance = null;
       if (this.audioEl) { this.audioEl.onended = this.audioEl.onerror = null; this.audioEl.pause(); this.audioEl = null; }
       if (this.synth && (this.synth.speaking || this.synth.pending)) {
         this.synth.cancel();
