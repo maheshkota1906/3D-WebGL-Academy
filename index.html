@@ -4851,13 +4851,10 @@
             return clip(from.x, x - from.x, box.min.x, box.max.x) &&
               clip(from.z, z - from.z, box.min.z, box.max.z);
           };
+          // Only the narrow doorway portal may bypass the outer bounds.
+          // Never use the whole GameObject_(1) bounding box here: it includes
+          // nearby shelter walls and would let the player walk around them.
           if (earlyPortal && crossesBox(earlyPortal)) allowedDoorwayCrossing = true;
-          if (!allowedDoorwayCrossing && earlyAccess) {
-            earlyAccess.updateMatrixWorld(true);
-            const accessBox = new THREE.Box3().setFromObject(earlyAccess);
-            accessBox.expandByScalar(0.65);
-            if (crossesBox(accessBox)) allowedDoorwayCrossing = true;
-          }
         }
         if (!allowedDoorwayCrossing) return false;
       }
@@ -4963,15 +4960,9 @@
           (feetY >= portal.min.y - 0.6 && feetY <= portal.max.y + 0.6);
         if (atDoorHeight && portal && inBoxOrCrossing(portal)) return true;
 
-        if (atDoorHeight && access && access.visible) {
-          access.updateMatrixWorld(true);
-          const accessBox = new THREE.Box3().setFromObject(access);
-          accessBox.min.x -= 0.65;
-          accessBox.max.x += 0.65;
-          accessBox.min.z -= 0.65;
-          accessBox.max.z += 0.65;
-          if (inBoxOrCrossing(accessBox)) return true;
-        }
+        // Do not bypass collision using GameObject_(1)'s full bounding box.
+        // That box overlaps the shelter walls; only the narrow portal above is
+        // permitted to bypass mesh collision while the door is open.
       }
 
       const ray = this._collisionRay || (this._collisionRay = new THREE.Raycaster());
