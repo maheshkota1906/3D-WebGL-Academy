@@ -3526,7 +3526,7 @@
 
       // 1) sliding panels: *_01 / *_02 siblings. The last panel slides over the first (any direction, incl. vertical windows).
       const groups = new Map();
-      meshes.forEach((m) => { if (PANEL.test(m.name) && !hasAnc(m, PANEL) && !isProd(m)) { if (!groups.has(m.parent)) groups.set(m.parent, []); groups.get(m.parent).push(m); } });
+      meshes.forEach((m) => { if (PANEL.test(m.name) && !hasAnc(m, PANEL) && !isProd(m) && !hasAnc(m, /^(?:ATS|ATS_Panel|BatteryBank|Battery_Bank|Batteries|Rectifier|RectifierSystem|RectifierCabinet)(?:[_ -].*)?$/i)) { if (!groups.has(m.parent)) groups.set(m.parent, []); groups.get(m.parent).push(m); } });
       /* modeller animations take priority: returns the clip actions that animate anything inside `node` */
       const clipsFor = (node) => {
         if (!level.mixer || !level.animations || !level.animations.length) return [];
