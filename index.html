@@ -2551,18 +2551,15 @@
       this.clearAtsDoorAnimation();
       if (!productRoot) return;
 
-      // Normalize labels such as ATS, ATS_(1), ATS_01 and ATS (1).
-      const compact = (name) => String(name || '').toLowerCase().replace(/[ _()\-]+/g, '');
+      const compact = (name) => String(name || '').toLowerCase().replace(/[ _-]+/g, '');
       const rootName = compact(productRoot.name);
       const productName = compact((productRoot.userData.product || {}).name);
       const nodes = [];
       productRoot.traverse((node) => nodes.push(node));
       const hasDoorMeshes = nodes.some((node) => /^sm_door_0?[12]$/i.test(node.name || ''));
 
-      const isAtsVariant = rootName === 'ats' || rootName === 'ats01' || rootName === 'ats1' ||
-        productName === 'ats' || productName === 'ats01' || productName === 'ats1';
-
-      if (!(isAtsVariant || hasDoorMeshes)) return;
+      if (!(rootName === 'ats' || /^ats0?1$/.test(rootName) ||
+            productName === 'ats' || productName === 'ats01' || hasDoorMeshes)) return;
 
       productRoot.userData.isAtsCabinet = true;
 
@@ -2572,7 +2569,6 @@
         { names: ['SM_Door_02', 'SM_Door_2'], angle: -Math.PI / 2 }
       ];
       this.atsDoorAnimation = [];
-      this.atsDoorAnimationWaitingForFocus = !!this.cameraAnim?.active;
 
       specs.forEach((spec) => {
         const door = nodes.find((node) =>
@@ -2595,16 +2591,11 @@
           door,
           closedQuaternion,
           openQuaternion,
-          targetOpen: false
+          targetOpen: true
         });
       });
 
       if (this.atsDoorAnimation.length) {
-        // If no camera travel is in progress, start the doors immediately.
-        // Otherwise the render loop opens them when the current camera travel ends.
-        if (!this.atsDoorAnimationWaitingForFocus) {
-          this.atsDoorAnimation.forEach((doorState) => { doorState.targetOpen = true; });
-        }
         console.info('ATS local-pivot animation ready:', this.atsDoorAnimation.map((d) => d.door.name));
       }
     }
@@ -4583,12 +4574,6 @@
           this.cameraAnim.active = false;
           this.setLook(this.camera.rotation.y, this.camera.rotation.x);
 
-          // Start opening ATS doors only after the camera has arrived at the selected asset.
-          if (this.atsDoorAnimation && this.atsDoorAnimation.length &&
-              this.atsDoorAnimationWaitingForFocus) {
-            this.atsDoorAnimation.forEach((doorState) => { doorState.targetOpen = true; });
-            this.atsDoorAnimationWaitingForFocus = false;
-          }
         }
       }
 
