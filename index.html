@@ -4864,26 +4864,48 @@
       );
       const openDoor = doorInteraction && doorInteraction.t > 0.82 ? doorInteraction.productDoorRoot : null;
 
-      // Permit movement through the actual doorway only while Product_Door
-      // is open. Do not bypass collisions across the whole room-access object.
+      // Permit passage through the doorway only when the hinged door is open.
+      // Use the authored access/threshold mesh bounds as well as the door leaf:
+      // the leaf's AABB can sit off-centre after the door is rotated.
       const portal = this.currentLevel.serverRoomPortal;
-      if (openDoor && portal) {
-        const fromInside = from.x >= portal.min.x && from.x <= portal.max.x &&
-          from.z >= portal.min.z && from.z <= portal.max.z;
-        const targetInside = x >= portal.min.x && x <= portal.max.x &&
-          z >= portal.min.z && z <= portal.max.z;
-        let tMin = 0, tMax = 1;
-        const clipAxis = (p, d, min, max) => {
-          if (Math.abs(d) < 1e-8) return p >= min && p <= max;
-          let a = (min - p) / d, b = (max - p) / d;
-          if (a > b) { const t = a; a = b; b = t; }
-          tMin = Math.max(tMin, a);
-          tMax = Math.min(tMax, b);
-          return tMin <= tMax;
+      const access = this.currentLevel.serverRoomAccess;
+      if (openDoor) {
+        const inBoxOrCrossing = (box) => {
+          if (!box || box.isEmpty()) return false;
+          const fromInside = from.x >= box.min.x && from.x <= box.max.x &&
+            from.z >= box.min.z && from.z <= box.max.z;
+          const targetInside = x >= box.min.x && x <= box.max.x &&
+            z >= box.min.z && z <= box.max.z;
+          let tMin = 0, tMax = 1;
+          const clipAxis = (p, d, min, max) => {
+            if (Math.abs(d) < 1e-8) return p >= min && p <= max;
+            let a = (min - p) / d, b = (max - p) / d;
+            if (a > b) { const t = a; a = b; b = t; }
+            tMin = Math.max(tMin, a);
+            tMax = Math.min(tMax, b);
+            return tMin <= tMax;
+          };
+          const crosses = clipAxis(from.x, x - from.x, box.min.x, box.max.x) &&
+            clipAxis(from.z, z - from.z, box.min.z, box.max.z);
+          return fromInside || targetInside || crosses;
         };
-        const crossesPortal = clipAxis(from.x, x - from.x, portal.min.x, portal.max.x) &&
-          clipAxis(from.z, z - from.z, portal.min.z, portal.max.z);
-        if (fromInside || targetInside || crossesPortal) return true;
+
+        // Keep the bypass local to the entrance and at player height; never
+        // disable collision for the entire room or for roof-level movement.
+        const feetY = from.y - this.currentLevel.eyeHeight;
+        const atDoorHeight = !portal ||
+          (feetY >= portal.min.y - 0.6 && feetY <= portal.max.y + 0.6);
+        if (atDoorHeight && portal && inBoxOrCrossing(portal)) return true;
+
+        if (atDoorHeight && access && access.visible) {
+          access.updateMatrixWorld(true);
+          const accessBox = new THREE.Box3().setFromObject(access);
+          accessBox.min.x -= 0.65;
+          accessBox.max.x += 0.65;
+          accessBox.min.z -= 0.65;
+          accessBox.max.z += 0.65;
+          if (inBoxOrCrossing(accessBox)) return true;
+        }
       }
 
       const ray = this._collisionRay || (this._collisionRay = new THREE.Raycaster());
