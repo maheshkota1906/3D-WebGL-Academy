@@ -4427,31 +4427,13 @@
       const root = this.selectedProduct && this.selectedProduct.modelRoot;
       if (!root) return;
 
-      // ATS/battery/rectifier assemblies can freeze the renderer when cloned
-      // for an inspector thumbnail. Skip their clone preview entirely; the
-      // selected asset and the inspector details remain available in the scene.
-      const previewName = String(root.name || this.selectedProduct.name || '').toLowerCase().trim().replace(/_?\(\d+\)$/, '').replace(/[_-]+/g, '');
-      const isPowerCabinet = /^(ats|atspanel|batterybank|batteries|battery|rectifier|rectifiersystem|rectifiercabinet)$/.test(previewName)
-        || /^(ats panel|battery bank|rectifier system)$/i.test(String(this.selectedProduct.name || ''));
-      let previewMeshCount = 0;
-      root.traverse((o) => { if (o.isMesh) previewMeshCount++; });
-      if (isPowerCabinet || previewMeshCount > 350) {
-        if (this.preview) this.preview.active = false;
-        const ui = this.ui;
-        if (ui && ui.slideshow) {
-          ui.slideshow.classList.remove('hidden');
-          ui.slideshow.classList.remove('preview-on');
-          ui.slideshow.innerHTML = '<div class="w-full h-full flex items-center justify-center bg-slate-100 text-slate-500 text-sm text-center p-4">3D preview skipped for this very large assembly to keep the walkthrough responsive.</div>';
-        }
-        console.info('[Preview] Skipped expensive clone for large asset:', root.name, previewMeshCount, 'meshes');
-        return;
-      }
-
+      // Keep the real 3D preview for every component. Use a fixed low pixel ratio
+      // and compact render target so detailed assemblies do not overwhelm the GPU.
       if (!this.preview) this.initPreview();
       const P = this.preview, ui = this.ui;
       ui.slideshow.classList.remove('hidden'); ui.slideshow.classList.add('preview-on');
       const w = ui.slideshow.clientWidth || 320, h = ui.slideshow.clientHeight || 176;
-      P.r.setPixelRatio(Math.min(window.devicePixelRatio, 2)); P.r.setSize(w, h, false);
+      P.r.setPixelRatio(1); P.r.setSize(Math.min(w, 320), Math.min(h, 176), false);
       P.cam.aspect = w / h; P.cam.updateProjectionMatrix();
 
       const up = root.userData.product; delete root.userData.product;   // circular ref (product.modelRoot) would overflow clone()
