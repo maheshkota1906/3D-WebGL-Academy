@@ -2561,9 +2561,12 @@
       if (!(rootName === 'ats' || /^ats0?1$/.test(rootName) ||
             productName === 'ats' || productName === 'ats01' || hasDoorMeshes)) return;
 
+      productRoot.userData.isAtsCabinet = true;
+
       const specs = [
-        { names: ['SM_Door_01', 'SM_Door_1'], angle: -Math.PI / 2 },
-        { names: ['SM_Door_02', 'SM_Door_2'], angle: Math.PI / 2 }
+        // Reverse the previous swing: both leaves must rotate outward from the cabinet.
+        { names: ['SM_Door_01', 'SM_Door_1'], angle: Math.PI / 2 },
+        { names: ['SM_Door_02', 'SM_Door_2'], angle: -Math.PI / 2 }
       ];
       this.atsDoorAnimation = [];
 
@@ -2734,7 +2737,15 @@
       this.setupAtsDoorAnimation(productRoot);
       this.spin = { target: productRoot.rotation.y, vel: 0, last: 0, touching: false };
       this.updateInspectorUI(product);
-      this.applyHighlight(productRoot);
+      if (productRoot.userData.isAtsCabinet) {
+        // ATS is inspectable without the orange outline/tint obscuring the door motion.
+        this.hideFocusOutline = true;
+        this.setOutlineRoot(null);
+        this.untint();
+      } else {
+        this.hideFocusOutline = false;
+        this.applyHighlight(productRoot);
+      }
 
       // Release pointer lock as soon as an asset is selected so the mouse cursor is
       // available for the inspector, description controls, replay audio, and close buttons.
