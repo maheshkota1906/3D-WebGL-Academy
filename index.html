@@ -2551,20 +2551,42 @@
       this.clearAtsDoorAnimation();
       if (!productRoot) return;
 
-      const compact = (name) => String(name || '').toLowerCase().replace(/[ _-]+/g, '');
-      const rootName = compact(productRoot.name);
-      const productName = compact((productRoot.userData.product || {}).name);
-      const nodes = [];
-      productRoot.traverse((node) => nodes.push(node));
-      const hasDoorMeshes = nodes.some((node) => /^sm_door_0?[12]$/i.test(node.name || ''));
+      // Match both ATS and ATS (1)/ATS_(1), even when the viewer gives the
+      // selected model an outer wrapper with the same-named door meshes below it.
+      const compact = (name) => String(name || '').toLowerCase().replace(/[ _()\-]+/g, '');
+      const isAtsName = (name) => {
+        const key = compact(name);
+        return key === 'ats' || /^ats0?1$/.test(key);
+      };
 
-      if (!(rootName === 'ats' || /^ats0?1$/.test(rootName) ||
-            productName === 'ats' || productName === 'ats01' || hasDoorMeshes)) return;
+      const allNodes = [];
+      productRoot.traverse((node) => allNodes.push(node));
+      const hasDoorPair = (root) => {
+        const names = new Set();
+        root.traverse((node) => {
+          const name = String(node.name || '').trim().toLowerCase();
+          if (name === 'sm_door_01' || name === 'sm_door_1') names.add('door1');
+          if (name === 'sm_door_02' || name === 'sm_door_2') names.add('door2');
+        });
+        return names.has('door1') || names.has('door2');
+      };
 
+      // Prefer the selected ATS group itself. If selection is an outer wrapper,
+      // target the matching ATS child group so the other cabinet is never animated.
+      let cabinetRoot = isAtsName(productRoot.name) ? productRoot : null;
+      if (!cabinetRoot) {
+        cabinetRoot = allNodes.find((node) => node !== productRoot &&
+          isAtsName(node.name) && hasDoorPair(node)) || null;
+      }
+      if (!cabinetRoot && hasDoorPair(productRoot)) cabinetRoot = productRoot;
+      if (!cabinetRoot) return;
+
+      cabinetRoot.userData.isAtsCabinet = true;
       productRoot.userData.isAtsCabinet = true;
 
+      const nodes = [];
+      cabinetRoot.traverse((node) => nodes.push(node));
       const specs = [
-        // Reverse the previous swing: both leaves must rotate outward from the cabinet.
         { names: ['SM_Door_01', 'SM_Door_1'], angle: Math.PI / 2 },
         { names: ['SM_Door_02', 'SM_Door_2'], angle: -Math.PI / 2 }
       ];
@@ -2575,12 +2597,11 @@
           spec.names.some((name) => (node.name || '').trim().toLowerCase() === name.toLowerCase())
         );
         if (!door) {
-          console.warn('ATS animation: door mesh not found:', spec.names[0]);
+          console.warn('ATS animation: door mesh not found:', spec.names[0], 'under', cabinetRoot.name);
           return;
         }
 
-        // The door object's own local origin is the hinge/pivot authored in the model.
-        // Rotate about its local Y axis, relative to its original closed quaternion.
+        // Use each door mesh's authored local pivot/origin.
         const closedQuaternion = door.quaternion.clone();
         const localHingeRotation = new THREE.Quaternion().setFromAxisAngle(
           new THREE.Vector3(0, 1, 0), spec.angle
@@ -2596,7 +2617,8 @@
       });
 
       if (this.atsDoorAnimation.length) {
-        console.info('ATS local-pivot animation ready:', this.atsDoorAnimation.map((d) => d.door.name));
+        console.info('ATS local-pivot animation ready for', cabinetRoot.name,
+          this.atsDoorAnimation.map((d) => d.door.name));
       }
     }
 
