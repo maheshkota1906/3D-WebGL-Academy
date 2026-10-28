@@ -802,7 +802,6 @@
       this.synth = ('speechSynthesis' in window) ? window.speechSynthesis : null;
       this.currentUtterance = null;
       this.audioEl = null;
-      this._speakTimer = null;
       this.defaultLang = '';   // empty = use the device's own default voice (exactly as before)
       this.statusCard = document.getElementById('narration-status-card');
       this.textDisplay = document.getElementById('narration-text-display');
@@ -930,21 +929,10 @@
       u.rate = st.ttsRate || 1; u.pitch = st.ttsPitch || 1; u.volume = 1;
       u.onstart = () => this._status(true, text);
       u.onend = u.onerror = () => this._status(false);
-
-      // Chromium can clip the first word when speak() follows cancel() in the
-      // same task. Start after a short gap and explicitly resume the speech queue.
-      const synth = this.synth;
-      this._speakTimer = setTimeout(() => {
-        this._speakTimer = null;
-        if (this.currentUtterance !== u || !this.enabled && !opts.force) return;
-        synth.speak(u);
-        if (typeof synth.resume === 'function') synth.resume();
-      }, 140);
+      this.synth.speak(u);
     }
 
     stop() {
-      if (this._speakTimer) { clearTimeout(this._speakTimer); this._speakTimer = null; }
-      this.currentUtterance = null;
       if (this.audioEl) { this.audioEl.onended = this.audioEl.onerror = null; this.audioEl.pause(); this.audioEl = null; }
       if (this.synth && (this.synth.speaking || this.synth.pending)) {
         this.synth.cancel();
@@ -4694,32 +4682,8 @@
       const floorY = lv ? this.groundY(currentPos.x, currentPos.z, currentPos.y + 0.75) : 0;
       const groundCameraY = floorY + eye;
       if (!this.isGrounded || this.jumpVelocity > 0) {
-        const previousCameraY = currentPos.y;
         this.jumpVelocity -= 14.5 * delta;
         currentPos.y += this.jumpVelocity * delta;
-
-        // Vertical head collision: stop a jump when the player's head reaches
-        // the underside of a roof/ceiling. Without this, the camera can pass
-        // through the shelter roof and groundY then treats the roof as a floor.
-        if (currentPos.y > previousCameraY && lv && lv.rootGroup) {
-          const ceilingRay = this._ceilingRay || (this._ceilingRay = new THREE.Raycaster());
-          ceilingRay.set(
-            new THREE.Vector3(currentPos.x, previousCameraY, currentPos.z),
-            new THREE.Vector3(0, 1, 0)
-          );
-          ceilingRay.near = 0.02;
-          ceilingRay.far = currentPos.y - previousCameraY + 0.08;
-          const ceilingHit = ceilingRay.intersectObjects(lv.rootGroup.children, true).find((hit) => {
-            const o = hit.object;
-            return o.visible && !o.userData.isOutline && !o.userData.isPreview &&
-              !o.userData.isServerRoomAccess && !o.userData.isWalkablePlatform;
-          });
-          if (ceilingHit) {
-            currentPos.y = Math.max(previousCameraY, ceilingHit.point.y - 0.08);
-            this.jumpVelocity = 0;
-          }
-        }
-
         if (currentPos.y <= groundCameraY) {
           currentPos.y = groundCameraY + bob;
           this.jumpVelocity = 0;
