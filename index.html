@@ -1981,7 +1981,7 @@
         const doorBox = new THREE.Box3().setFromObject(productDoorRoot);
         const doorCenter = doorBox.getCenter(new THREE.Vector3());
         const doorSize = doorBox.getSize(new THREE.Vector3());
-        const portalPad = 0.45;
+        const portalPad = 0.12;
         level.serverRoomPortal = new THREE.Box3(
           new THREE.Vector3(
             doorBox.min.x - portalPad,
@@ -3909,9 +3909,6 @@
       const px = x === null ? c.x : x;
       const pz = z === null ? c.z : z;
       const currentFeetY = c.y - lv.eyeHeight;
-      // Cast from above the doorway's raised floor. Starting just above the
-      // camera misses a higher floor entirely when its surface is above the ray origin,
-      // which is why the player previously had to jump before floor snapping worked.
       const top = startY === null ? c.y + 0.75 : startY;
 
       const r = this._gr || (this._gr = new THREE.Raycaster());
@@ -3969,35 +3966,6 @@
       }
       if (platformFloor !== null) return platformFloor;
 
-      // GameObject_(1) is the authored entrance landing the user must be able
-      // to step onto. Resolve its upward-facing mesh surface explicitly as a
-      // walkable floor; it is ignored by horizontal body collision below.
-      const accessLanding = lv.serverRoomAccess;
-      if (accessLanding && accessLanding.visible) {
-        accessLanding.updateMatrixWorld(true);
-        const ab = new THREE.Box3().setFromObject(accessLanding);
-        const insideLanding =
-          px >= ab.min.x - 0.18 && px <= ab.max.x + 0.18 &&
-          pz >= ab.min.z - 0.18 && pz <= ab.max.z + 0.18;
-        if (insideLanding) {
-          const ar = new THREE.Raycaster(
-            new THREE.Vector3(px, Math.max(top, ab.max.y + 0.25), pz),
-            new THREE.Vector3(0, -1, 0), 0, Math.max(4, ab.max.y - ab.min.y + 4)
-          );
-          const landingHits = ar.intersectObject(accessLanding, true).filter((hit) => {
-            if (!hit.object.visible || hit.object.userData.isOutline || hit.object.userData.isPreview) return false;
-            if (!hit.face) return true;
-            const normal = hit.face.normal.clone();
-            normal.applyMatrix3(new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld)).normalize();
-            return normal.y >= 0.55;
-          });
-          const landingFloor = landingHits
-            .filter((hit) => hit.point.y >= currentFeetY - 3.0 && hit.point.y <= currentFeetY + 2.4)
-            .sort((a, b) => Math.abs(a.point.y - currentFeetY) - Math.abs(b.point.y - currentFeetY))[0];
-          if (landingFloor) return landingFloor.point.y;
-        }
-      }
-
       // The server-room entrance has a real floor-height transition.
       // Allow the authored doorway to resolve that transition instead of
       // leaving the player suspended at the outside-floor height.
@@ -4013,8 +3981,8 @@
         // player is already eligible for automatic floor-height adjustment
         // before crossing the threshold in either direction.
         inAccess =
-          px >= accessBox.min.x - 0.45 && px <= accessBox.max.x + 0.45 &&
-          pz >= accessBox.min.z - 0.45 && pz <= accessBox.max.z + 0.45;
+          px >= accessBox.min.x - 1.0 && px <= accessBox.max.x + 1.0 &&
+          pz >= accessBox.min.z - 1.0 && pz <= accessBox.max.z + 1.0;
       }
       const doorwayPortal = lv.serverRoomPortal;
       if (doorwayPortal) {
@@ -4024,10 +3992,7 @@
           pz >= doorwayPortal.min.z - portalMargin && pz <= doorwayPortal.max.z + portalMargin;
         if (nearPortal) inAccess = true;
       }
-      // Doorway threshold may be higher than a normal stair. Permit automatic
-      // floor snapping only inside the narrow access/portal zone; select the
-      // floor closest to the player's feet below, so this does not snap to a roof.
-      if (inAccess) maxStepUp = 2.4;
+      if (inAccess) maxStepUp = 1.60;
 
       const maxStepDown = 3.0;
       const minY = currentFeetY - maxStepDown;
@@ -4040,17 +4005,19 @@
         return n.y >= 0.55;
       };
 
-      const validFloorHits = hits.filter((i) => {
+      const h = hits.find((i) => {
         if (!isFloorHit(i)) return false;
+        // At the doorway, choose the closest valid floor surface in the
+        // direction of travel, allowing automatic step-up/step-down without
+        // requiring a jump key. Outside the doorway retain the normal step limit.
+        if (inAccess) {
+          if (i.point.y < minY || i.point.y > maxY) return false;
+          return true;
+        }
         if (i.point.y < minY || i.point.y > maxY) return false;
-        if (i.point.y > currentFeetY + 0.35 && !inAccess) return false;
+        if (i.point.y > currentFeetY + 0.35) return false;
         return true;
       });
-      // Ray hits are ordered from above. At the doorway, choose the valid floor
-      // closest to the player's feet rather than snapping to the shelter roof.
-      const h = inAccess
-        ? validFloorHits.sort((a, b) => Math.abs(a.point.y - currentFeetY) - Math.abs(b.point.y - currentFeetY))[0]
-        : validFloorHits[0];
       if (h) return h.point.y;
 
       // Never teleport to an unrelated elevated surface when no nearby floor
@@ -4821,42 +4788,10 @@
     isValidPosition(x, z) {
       if (!this.currentLevel) return true;
 
-      // 1. Keep the outer boundary, but don't let it seal the server-room doorway.
-      // The attached room can extend beyond the main roomBounds; allow a boundary
-      // crossing only when the door is open and the move is inside the doorway/access zone.
+      // 1. Keep the existing outer room boundary.
       const bounds = this.currentLevel.roomBounds;
-      const outsideRoomBounds = x < bounds.min.x || x > bounds.max.x || z < bounds.min.z || z > bounds.max.z;
-      if (outsideRoomBounds) {
-        const earlyDoor = (this.currentLevel.interactives || []).find(
-          (it) => it.kind === 'hinge' && it.isProductDoor && it.pivot
-        );
-        const earlyOpenDoor = earlyDoor && earlyDoor.t > 0.82;
-        const earlyPortal = this.currentLevel.serverRoomPortal;
-        const earlyAccess = this.currentLevel.serverRoomAccess;
-        let allowedDoorwayCrossing = false;
-        if (earlyOpenDoor) {
-          const from = this.camera.position;
-          const crossesBox = (box) => {
-            if (!box || box.isEmpty()) return false;
-            const inside = (px, pz) => px >= box.min.x && px <= box.max.x && pz >= box.min.z && pz <= box.max.z;
-            if (inside(from.x, from.z) || inside(x, z)) return true;
-            let t0 = 0, t1 = 1;
-            const clip = (p, d, mn, mx) => {
-              if (Math.abs(d) < 1e-8) return p >= mn && p <= mx;
-              let a = (mn - p) / d, b = (mx - p) / d;
-              if (a > b) { const q = a; a = b; b = q; }
-              t0 = Math.max(t0, a); t1 = Math.min(t1, b);
-              return t0 <= t1;
-            };
-            return clip(from.x, x - from.x, box.min.x, box.max.x) &&
-              clip(from.z, z - from.z, box.min.z, box.max.z);
-          };
-          // Only the narrow doorway portal may bypass the outer bounds.
-          // Never use the whole GameObject_(1) bounding box here: it includes
-          // nearby shelter walls and would let the player walk around them.
-          if (earlyPortal && crossesBox(earlyPortal)) allowedDoorwayCrossing = true;
-        }
-        if (!allowedDoorwayCrossing) return false;
+      if (x < bounds.min.x || x > bounds.max.x || z < bounds.min.z || z > bounds.max.z) {
+        return false;
       }
 
       // 2. Tower-top safety boundary. While the player is at ladder/platform
@@ -4927,18 +4862,19 @@
       );
       const openDoor = doorInteraction && doorInteraction.t > 0.82 ? doorInteraction.productDoorRoot : null;
 
-      // Permit passage through the doorway only when the hinged door is open.
-      // Use the authored access/threshold mesh bounds as well as the door leaf:
-      // the leaf's AABB can sit off-centre after the door is rotated.
-      const portal = this.currentLevel.serverRoomPortal;
+      // Restore the authored GameObject_(1) doorway passage, but only when
+      // Product_Door is fully open. Keep the bypass limited to this access mesh
+      // so adjacent wall meshes continue to block movement.
       const access = this.currentLevel.serverRoomAccess;
-      if (openDoor) {
-        const inBoxOrCrossing = (box) => {
-          if (!box || box.isEmpty()) return false;
-          const fromInside = from.x >= box.min.x && from.x <= box.max.x &&
-            from.z >= box.min.z && from.z <= box.max.z;
-          const targetInside = x >= box.min.x && x <= box.max.x &&
-            z >= box.min.z && z <= box.max.z;
+      if (openDoor && access) {
+        access.updateMatrixWorld(true);
+        const accessBox = new THREE.Box3().setFromObject(access);
+        if (!accessBox.isEmpty()) {
+          accessBox.expandByScalar(0.35);
+          const fromInside = from.x >= accessBox.min.x && from.x <= accessBox.max.x &&
+            from.z >= accessBox.min.z && from.z <= accessBox.max.z;
+          const targetInside = x >= accessBox.min.x && x <= accessBox.max.x &&
+            z >= accessBox.min.z && z <= accessBox.max.z;
           let tMin = 0, tMax = 1;
           const clipAxis = (p, d, min, max) => {
             if (Math.abs(d) < 1e-8) return p >= min && p <= max;
@@ -4948,21 +4884,10 @@
             tMax = Math.min(tMax, b);
             return tMin <= tMax;
           };
-          const crosses = clipAxis(from.x, x - from.x, box.min.x, box.max.x) &&
-            clipAxis(from.z, z - from.z, box.min.z, box.max.z);
-          return fromInside || targetInside || crosses;
-        };
-
-        // Keep the bypass local to the entrance and at player height; never
-        // disable collision for the entire room or for roof-level movement.
-        const feetY = from.y - this.currentLevel.eyeHeight;
-        const atDoorHeight = !portal ||
-          (feetY >= portal.min.y - 0.6 && feetY <= portal.max.y + 0.6);
-        if (atDoorHeight && portal && inBoxOrCrossing(portal)) return true;
-
-        // Do not bypass collision using GameObject_(1)'s full bounding box.
-        // That box overlaps the shelter walls; only the narrow portal above is
-        // permitted to bypass mesh collision while the door is open.
+          const crossesAccess = clipAxis(from.x, x - from.x, accessBox.min.x, accessBox.max.x) &&
+            clipAxis(from.z, z - from.z, accessBox.min.z, accessBox.max.z);
+          if (fromInside || targetInside || crossesAccess) return true;
+        }
       }
 
       const ray = this._collisionRay || (this._collisionRay = new THREE.Raycaster());
